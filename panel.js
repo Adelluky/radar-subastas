@@ -91,6 +91,239 @@ function elemento(etiqueta, texto) {
   return nodo;
 }
 
+const columnasSubasta = ['identificador','localidad','direccion','valor_subasta','tasacion','deposito',
+  'fecha_fin','visitable','riesgo_puntuacion','capital_necesario_estimado'];
+const columnasMunicipio = ['nombre','provincia','alquiler_mensual','precio_vivienda','cuota_hipoteca_mensual',
+  'cash_flow_mensual','rentabilidad_neta','capital_necesario','entrada_minima_pct'];
+const tablasRadar = {
+  subastas: columnasSubasta,
+  oportunidades: columnasSubasta,
+  municipios: columnasMunicipio,
+  distritos: ['nombre','codigo','renta_hogar_anual','alquiler_var_anual_pct','alquiler_desde_2015_pct'],
+  comprobaciones: ['dato','estado','detalle','dias'],
+  provincias: ['nombre','codigo']
+};
+const indicadoresRadar = {
+  analisis: ['cash_flow_mensual','rentabilidad_neta','capital_aportado','cuota_mensual','alquiler_mensual'],
+  rentabilidad: ['cash_flow_mensual','rentabilidad_neta','capital_aportado','cuota_mensual','alquiler_mensual'],
+  se_paga_solo: ['veredicto','cash_flow_mensual','entrada_minima_pct','capital_extra_necesario'],
+  valoracion: ['valor_mercado_estimado','alquiler_mensual','descuento_pct'],
+  riesgo: ['nivel','puntuacion'],
+  metricas_inversor: ['dscr','dscr_veredicto','ocupacion_minima_pct','per_inmobiliario'],
+  subasta: ['identificador','valor_subasta','deposito','fecha_fin'],
+  contexto_zona: ['municipio','zona_tensionada_certeza','renta_hogar_anual','ite_situacion'],
+  precio_vs_alquiler: ['anio','variacion_alquiler_pct','variacion_precio_pct','brecha_pp']
+};
+const resumenRadar = {
+  '/health':['status','version'],
+  '/subastas/health':['status','version'],
+  '/subastas/buscar':['total','provincia'],
+  '/subastas/oportunidades':['total','provincia'],
+  '/subastas/zonas':['total_municipios','superficie_tipo','mejor_cash_flow','mejor_rentabilidad'],
+  '/subastas/se-pagan-solos':['total','superficie_tipo'],
+  '/subastas/se-pagan-solos.csv':['total'],
+  '/subastas/distritos':['ciudad','disponible'],
+  '/subastas/inversor':indicadoresRadar.metricas_inversor,
+  '/subastas/zona':indicadoresRadar.contexto_zona,
+  '/subastas/entorno':['disponible'],
+  '/subastas/vigencia':['todo_ok'],
+  '/subastas/tipo-interes':['tipo_estimado','euribor_12m','diferencial','fecha_dato'],
+  '/subastas/calculadora':['precio_maximo_cash_flow_cero']
+};
+
+const etiquetasRadar = {
+  direccion:'Dirección', tasacion:'Tasación', valor_subasta:'Valor de subasta', fecha_fin:'Fecha de cierre', identificador:'Ficha del BOE',
+  cash_flow_mensual:'Flujo de caja mensual', capital_aportado:'Capital propio aportado',
+  capital_necesario_estimado:'Capital inicial estimado', precio_maximo_cash_flow_cero:'Precio máximo con flujo de caja cero',
+  riesgo_puntuacion:'Riesgo (0–100)', puntuacion:'Puntuación', dscr:'Cobertura de deuda (DSCR)',
+  dscr_veredicto:'Lectura de la cobertura', per_inmobiliario:'PER inmobiliario',
+  tipo_estimado:'Tipo hipotecario estimado', euribor_12m:'Euríbor a 12 meses', brecha_pp:'Brecha (pp)',
+  todo_ok:'Fuentes sin incidencias que requieran revisión', status:'Estado',
+  anio:'Año', dias:'Días', codigo:'Código INE', codigo_ine:'Código INE', superficie_tipo:'Superficie de referencia',
+  se_paga_solo:'Autofinanciación', contexto_zona:'Contexto de la zona', metricas_inversor:'Métricas del inversor',
+  precio_vs_alquiler:'Evolución del alquiler frente al precio de compra', analisis:'Rentabilidad estimada'
+};
+const monedaRadar = new Intl.NumberFormat('es-ES', {style:'currency',currency:'EUR'});
+const numeroRadar = new Intl.NumberFormat('es-ES', {maximumFractionDigits:2});
+const unidadPorcentaje = new Set(['rentabilidad_bruta','rentabilidad_neta','retorno_capital_aportado',
+  'entrada_pct','entrada_pct_usada','entrada_minima_pct','interes_anual','euribor_12m','tipo_estimado',
+  'diferencial','ocupacion_minima_pct','itp_pct','vacancia_pct','irpf_marginal']);
+
+function tituloRadar(clave) {
+  return etiquetasRadar[clave] || clave.replaceAll('_',' ').replace(/^./, letra => letra.toUpperCase());
+}
+
+function valorRadar(clave, valor) {
+  if (valor == null || valor === '') return 'Sin dato';
+  if (typeof valor === 'boolean') return valor ? 'Sí' : 'No';
+  if (clave === 'status' && valor === 'ok') return 'Operativa';
+  if (['fecha_inicio','fecha_fin','fecha_dato'].includes(clave) && /^\d{4}-\d{2}-\d{2}/.test(valor)) {
+    const [a,m,d] = valor.slice(0,10).split('-');
+    return d + '/' + m + '/' + a + (valor.length >= 16 ? ' · ' + valor.slice(11,16) : '');
+  }
+  if (typeof valor !== 'number') return String(valor);
+  if (unidadPorcentaje.has(clave)) return numeroRadar.format(valor * 100) + (clave === 'diferencial' ? ' pp' : ' %');
+  if (clave.endsWith('_pct')) return numeroRadar.format(valor) + ' %';
+  if (clave.endsWith('_pp')) return numeroRadar.format(valor) + ' pp';
+  if (/^(anio|año)/.test(clave) && /^(anio|anio_construccion|alquiler_anio)$/.test(clave)) return String(valor);
+  if (/superficie/.test(clave)) return numeroRadar.format(valor) + ' m²';
+  if (/precio_m2|alquiler_m2/.test(clave)) return monedaRadar.format(valor) + '/m²';
+  if (/^(precio_|valor_subasta|valor_mercado|tasacion|deposito|cash_flow|cuota_|capital_|alquiler_mensual|renta_hogar|inversion_total|hipoteca$|entrada_minima_euros|gastos_|ingresos_|beneficio_|irpf_estimado|itp$|reforma$)/.test(clave)) return monedaRadar.format(valor);
+  return numeroRadar.format(valor);
+}
+
+function lecturaRadar(clave, valor) {
+  if ((clave === 'identificador' || clave === 'url') && typeof valor === 'string') {
+    const id = valor.match(/^(?:https:\/\/subastas\.boe\.es\/detalleSubasta\.php\?idSub=)?(SUB-[A-Z]{2}-\d{4}-\d+)(?:&.*)?$/);
+    if (id) {
+      const enlace = elemento('a', id[1]);
+      enlace.href = 'https://subastas.boe.es/detalleSubasta.php?idSub=' + id[1];
+      enlace.target = '_blank';
+      enlace.rel = 'noopener noreferrer';
+      return enlace;
+    }
+  }
+  const salida = elemento('span', valorRadar(clave, valor));
+  if (clave === 'cash_flow_mensual' && typeof valor === 'number') salida.className = valor < 0 ? 'saldo-negativo' : 'saldo-positivo';
+  return salida;
+}
+
+function tablaRadar(clave, filas) {
+  const contenedor = elemento('div');
+  contenedor.className = 'table tabla-radar';
+  const tabla = elemento('table');
+  tabla.append(elemento('caption', tituloRadar(clave) + ' · ' + filas.length));
+  const claves = [...new Set(filas.flatMap(Object.keys))];
+  const columnas = (tablasRadar[clave] || claves).filter(c => claves.includes(c));
+  const cabecera = tabla.createTHead().insertRow();
+  const cuerpo = tabla.createTBody();
+  const detalles = claves.filter(c => !columnas.includes(c));
+  const collator = new Intl.Collator('es', {numeric:true,sensitivity:'base'});
+  let orden;
+  function pintar(ordenadas) {
+    cuerpo.replaceChildren();
+    for (const fila of ordenadas) {
+      const tr = cuerpo.insertRow();
+      for (const c of columnas) tr.insertCell().append(contenidoRadar(c, fila[c]));
+      if (detalles.length) {
+        const desplegable = elemento('details');
+        desplegable.append(elemento('summary','Ver ficha'));
+        desplegable.addEventListener('toggle', () => {
+          if (desplegable.open && desplegable.childElementCount === 1) {
+            desplegable.append(bloqueRadar(Object.fromEntries(detalles.map(c => [c,fila[c]]))));
+          }
+        });
+        tr.insertCell().append(desplegable);
+      }
+    }
+  }
+  for (const c of columnas) {
+    const th = elemento('th');
+    th.scope = 'col';
+    const boton = elemento('button', tituloRadar(c) + ' ↕');
+    boton.type = 'button';
+    boton.addEventListener('click', () => {
+      const direccion = orden?.clave === c ? -orden.direccion : 1;
+      orden = {clave:c,direccion};
+      for (const celda of cabecera.cells) celda.removeAttribute('aria-sort');
+      th.setAttribute('aria-sort', direccion > 0 ? 'ascending' : 'descending');
+      pintar([...filas].sort((a,b) => {
+        const x=a[c], y=b[c];
+        if (x == null || y == null) return Number(x == null) - Number(y == null);
+        return direccion * (typeof x === 'number' && typeof y === 'number' ? x-y : collator.compare(String(x),String(y)));
+      }));
+    });
+    th.append(boton);
+    cabecera.append(th);
+  }
+  if (detalles.length) cabecera.append(elemento('th','Detalle'));
+  pintar(filas);
+  contenedor.append(tabla);
+  return contenedor;
+}
+
+function contenidoRadar(clave, valor) {
+  if (Array.isArray(valor)) {
+    if (!valor.length) return elemento('p','Sin registros.');
+    if (valor.every(fila => fila && typeof fila === 'object' && !Array.isArray(fila))) return tablaRadar(clave, valor);
+    const lista = elemento('ul');
+    for (const item of valor) {
+      const li = elemento('li');
+      li.append(contenidoRadar(clave, item));
+      lista.append(li);
+    }
+    return lista;
+  }
+  if (valor && typeof valor === 'object') return bloqueRadar(valor, indicadoresRadar[clave]);
+  return lecturaRadar(clave, valor);
+}
+
+function bloqueRadar(datos, destacados = []) {
+  const bloque = elemento('div');
+  const lista = elemento('dl');
+  lista.className = 'indicadores-radar';
+  const entradas = Object.entries(datos);
+  const escalar = v => !v || typeof v !== 'object';
+  const claves = destacados.length ? destacados.filter(c => Object.hasOwn(datos,c)) :
+    entradas.filter(([,v]) => escalar(v)).map(([c]) => c);
+  for (const clave of claves) {
+    const tarjeta = elemento('div');
+    tarjeta.append(elemento('dt',tituloRadar(clave)),elemento('dd'));
+    tarjeta.lastChild.append(contenidoRadar(clave,datos[clave]));
+    lista.append(tarjeta);
+  }
+  if (claves.length) bloque.append(lista);
+  const resto = entradas.filter(([c,v]) => !claves.includes(c) && (!escalar(v) || v != null));
+  const escalares = resto.filter(([,v]) => escalar(v));
+  if (escalares.length) {
+    const ficha = elemento('dl');
+    ficha.className = 'ficha-radar';
+    for (const [clave, valor] of escalares) {
+      const dd = elemento('dd');
+      dd.append(lecturaRadar(clave,valor));
+      ficha.append(elemento('dt',tituloRadar(clave)),dd);
+    }
+    bloque.append(ficha);
+  }
+  for (const [clave, valor] of resto.filter(([,v]) => !escalar(v))) {
+    const seccion = elemento('section');
+    seccion.className = 'bloque-radar';
+    seccion.append(elemento('h3',tituloRadar(clave)),contenidoRadar(clave,valor));
+    bloque.append(seccion);
+  }
+  return bloque;
+}
+
+function datosCsvRadar(texto) {
+  const lineas = texto.split(/\r?\n/);
+  let inicio = 0;
+  while (inicio < lineas.length && /^#|^\s*$/.test(lineas[inicio])) inicio++;
+  const notas = lineas.slice(0,inicio).map(linea => linea.replace(/^#\s*/, '')).filter(Boolean);
+  const registros = [];
+  let registro = [], campo = '', comillas = false;
+  const csv = lineas.slice(inicio).join('\n') + '\n';
+  for (let i=0;i<csv.length;i++) {
+    const c=csv[i];
+    if (c === '"') {
+      if (comillas && csv[i+1] === '"') { campo += c; i++; }
+      else comillas = !comillas;
+    } else if (!comillas && (c === ',' || c === '\n')) {
+      registro.push(campo);
+      campo = '';
+      if (c === '\n') {
+        if (registro.some(Boolean)) registros.push(registro);
+        registro = [];
+      }
+    } else campo += c;
+  }
+  const [cabecera = [], ...filas] = registros;
+  const municipios = filas.map(fila => Object.fromEntries(cabecera.map((c,i) => {
+    const v = fila[i];
+    return [c, v && !/codigo|ine/.test(c) && /^-?\d+(?:\.\d+)?$/.test(v) ? Number(v) : v];
+  })));
+  return {total:municipios.length,municipios,notas};
+}
+
 function montarPanel(spec) {
   function resolver(schema) {
     if (schema.$ref) return spec.components.schemas[schema.$ref.split('/').pop()];
@@ -200,8 +433,14 @@ function montarPanel(spec) {
     const aviso = elemento('p');
     aviso.className = 'note';
     aviso.setAttribute('role', 'status');
+    const dashboard = elemento('div');
+    dashboard.className = 'dashboard-radar';
+    dashboard.hidden = true;
+    const datosOriginales = elemento('details');
+    datosOriginales.hidden = true;
+    const resumenOriginal = elemento('summary','Ver JSON original');
     const resultado = elemento('pre');
-    resultado.hidden = true;
+    datosOriginales.append(resumenOriginal, resultado);
     const descargar = elemento('a', 'Descargar CSV');
     descargar.hidden = true;
     let enlaceCsv;
@@ -209,7 +448,10 @@ function montarPanel(spec) {
       event.preventDefault();
       ejecutar.disabled = true;
       aviso.textContent = 'Consultando…';
-      resultado.hidden = true;
+      dashboard.hidden = true;
+      dashboard.replaceChildren();
+      datosOriginales.hidden = true;
+      datosOriginales.open = false;
       descargar.hidden = true;
       if (enlaceCsv) URL.revokeObjectURL(enlaceCsv);
       try {
@@ -221,19 +463,27 @@ function montarPanel(spec) {
         }
         const respuesta = await fetch(path + (query.size ? '?' + query : ''), peticion);
         const tipo = respuesta.headers.get('content-type') || '';
+        let datos;
         if (tipo.includes('json')) {
-          const datos = await respuesta.json();
+          datos = await respuesta.json();
           resultado.textContent = JSON.stringify(datos, null, 2);
         } else {
           resultado.textContent = await respuesta.text();
         }
         if (respuesta.ok && tipo.includes('text/csv')) {
+          datos = datosCsvRadar(resultado.textContent);
           enlaceCsv = URL.createObjectURL(new Blob([resultado.textContent], {type:'text/csv;charset=utf-8'}));
           descargar.href = enlaceCsv;
           descargar.download = 'municipios-que-se-pagan-solos.csv';
           descargar.hidden = false;
         }
-        resultado.hidden = false;
+        if (respuesta.ok && datos && typeof datos === 'object') {
+          dashboard.append(bloqueRadar(datos, resumenRadar[path]));
+          dashboard.hidden = false;
+        }
+        resumenOriginal.textContent = tipo.includes('json') ? 'Ver JSON original' : 'Ver respuesta original';
+        datosOriginales.hidden = false;
+        datosOriginales.open = !respuesta.ok;
         aviso.textContent = respuesta.ok ? 'Consulta completada.' : 'La API devolvió un error HTTP ' + respuesta.status + '.';
       } catch (error) {
         aviso.textContent = 'No se pudo completar la consulta. ' + error.message;
@@ -241,7 +491,7 @@ function montarPanel(spec) {
         ejecutar.disabled = false;
       }
     });
-    cuerpo.append(form, aviso, descargar, resultado);
+    cuerpo.append(form, aviso, descargar, dashboard, datosOriginales);
     return cuerpo;
   }
 

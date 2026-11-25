@@ -39,6 +39,22 @@ legend label{display:flex;align-items:center;gap:8px}
 legend input[type=checkbox]{width:auto;min-height:auto;margin:0}
 label small{font-weight:400}
 pre{background:#edf4ef;padding:14px;border-radius:8px;max-height:60vh;overflow:auto}
+.dashboard-radar{margin:16px 0}
+.indicadores-radar{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,175px),1fr));gap:10px;margin:10px 0}
+.indicadores-radar>div{background:#edf4ef;border:1px solid var(--line);padding:12px;border-radius:9px;overflow-wrap:anywhere}
+.indicadores-radar dt{font-size:.82rem;color:#49615a}
+.indicadores-radar dd{margin:2px 0 0;font-size:1.12rem;font-weight:650}
+.ficha-radar{display:grid;grid-template-columns:minmax(110px,1fr) minmax(0,3fr);gap:5px 12px;font-size:.91rem}
+.ficha-radar dt{font-weight:600}.ficha-radar dd{margin:0;overflow-wrap:anywhere}
+.bloque-radar{border-top:1px solid var(--line);margin-top:14px;padding-top:10px}
+.bloque-radar h3{font-size:1rem;margin:0 0 6px}
+.tabla-radar td{white-space:normal;min-width:92px}
+.tabla-radar td:first-child{min-width:110px}
+.tabla-radar caption{text-align:left;font-size:.84rem;color:#49615a;margin-bottom:6px}
+.tabla-radar th button{color:inherit;background:transparent;padding:0;min-height:28px;text-align:left}
+.tabla-radar th[aria-sort]{background:#d9e9df}
+.saldo-negativo{color:#a22f31;font-weight:650}.saldo-positivo{color:#176343;font-weight:650}
+summary{cursor:pointer;color:var(--accent)}
 [hidden]{display:none!important}
 @media(max-width:600px){main{padding:20px 12px}form,.results{padding:15px}header a{font-size:.8rem}}
 </style>
