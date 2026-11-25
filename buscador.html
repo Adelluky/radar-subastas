@@ -17,8 +17,8 @@ a{color:var(--accent)}
 form,.results{background:white;border:1px solid var(--line);border-radius:14px;padding:22px;margin-bottom:18px}
 .filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:14px 18px;margin:14px 0 18px}
 label{display:grid;gap:5px;font-size:.9rem;font-weight:650}
-select,button{font:inherit;border-radius:8px;min-height:43px}
-select{width:100%;border:1px solid #b7c9c0;background:#fbfdfb;color:inherit;padding:7px 9px}
+input,select,button{font:inherit;border-radius:8px;min-height:43px}
+input,select{width:100%;border:1px solid #b7c9c0;background:#fbfdfb;color:inherit;padding:7px 9px}
 button{background:var(--accent);color:white;border:0;padding:8px 22px;font-weight:650;cursor:pointer}
 button:disabled{opacity:.65;cursor:wait}
 .note,#status,small{color:#526661;font-size:.86rem}
@@ -31,6 +31,14 @@ th{background:#edf4ef;white-space:nowrap}
 td:not(:first-child){white-space:nowrap}
 td:first-child{min-width:185px}
 small{display:block}
+nav{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 18px}
+nav button{background:white;border:1px solid var(--line);color:var(--accent);padding:5px 11px;font-size:.84rem}
+nav button[aria-selected=true]{background:var(--accent);color:#fff}
+fieldset{border:1px solid var(--line);border-radius:8px;margin:12px 0;padding:0 14px}
+legend label{display:flex;align-items:center;gap:8px}
+legend input[type=checkbox]{width:auto;min-height:auto;margin:0}
+label small{font-weight:400}
+pre{background:#edf4ef;padding:14px;border-radius:8px;max-height:60vh;overflow:auto}
 [hidden]{display:none!important}
 @media(max-width:600px){main{padding:20px 12px}form,.results{padding:15px}header a{font-size:.8rem}}
 </style>
@@ -38,6 +46,11 @@ small{display:block}
 <body>
 <main>
 <header><h1>Radar de Subastas</h1><a href="/docs">Panel técnico</a></header>
+<nav id="operations" role="tablist" aria-label="Operaciones de Radar de Subastas">
+  <button type="button" id="tab-buscador" role="tab" aria-selected="true" aria-controls="buscador">Buscador rápido</button>
+</nav>
+<p id="panel-status" role="status" class="note"></p>
+<div id="buscador" role="tabpanel" aria-labelledby="tab-buscador">
 <form id="search">
   <h2>Buscar inmuebles del BOE</h2>
   <div class="filters">
@@ -52,36 +65,47 @@ small{display:block}
         </optgroup>
         <optgroup label="Provincias"><!-- opciones-provincia --></optgroup>
       </select>
+      <small>Limita la búsqueda a las cuatro capitales, a un municipio o a toda una provincia.</small>
     </label>
     <label>Valor de subasta
       <select name="precio_max"><option value="">Sin límite</option><option value="49999.99">Menos de 50.000 €</option><option value="99999.99" selected>Menos de 100.000 €</option><option value="149999.99">Menos de 150.000 €</option><option value="199999.99">Menos de 200.000 €</option><option value="299999.99">Menos de 300.000 €</option></select>
+      <small>Compara el límite con el valor publicado por el BOE.</small>
     </label>
     <label>Tasación publicada
       <select name="tasacion"><option value="">Cualquiera</option><option value="known">Con tasación</option><option value="unknown">Sin tasación</option><option value="99999.99">Menos de 100.000 €</option><option value="199999.99">Menos de 200.000 €</option></select>
+      <small>Filtra por la valoración que figura en la ficha.</small>
     </label>
     <label>Depósito máximo
       <select name="deposito"><option value="">Sin límite</option><option value="1000">1.000 €</option><option value="2500">2.500 €</option><option value="5000">5.000 €</option><option value="10000">10.000 €</option></select>
+      <small>Limita la cantidad que hay que consignar para participar.</small>
     </label>
     <label>Fecha de cierre
       <select name="plazo"><option value="">Cualquier fecha</option><option value="7">Próximos 7 días</option><option value="15">Próximos 15 días</option><option value="30">Próximos 30 días</option></select>
+      <small>Filtra por el tiempo que queda hasta el cierre.</small>
     </label>
     <label>Visitable
       <select name="visitable"><option value="">Cualquiera</option><option value="si">Sí</option><option value="no">No</option><option value="unknown">Sin confirmar</option></select>
+      <small>Usa la indicación de visitas publicada en la ficha.</small>
     </label>
     <label>Capital necesario estimado
       <select name="entrada_max"><option value="">Sin límite</option><option value="10000">Hasta 10.000 €</option><option value="25000">Hasta 25.000 €</option><option value="50000">Hasta 50.000 €</option></select>
+      <small>Limita el desembolso inicial estimado, incluidos impuestos y gastos.</small>
     </label>
     <label>Puntuación de riesgo
       <select name="riesgo_max"><option value="">Sin límite</option><option value="25">Hasta 25 de 100</option><option value="50">Hasta 50 de 100</option><option value="75">Hasta 75 de 100</option></select>
+      <small>Excluye fichas por encima de la puntuación elegida.</small>
     </label>
     <label>Estado
       <select name="incluir_cerradas"><option value="false">En curso</option><option value="true">En curso y vencidas que aún lista el BOE</option></select>
+      <small>Permite revisar fichas vencidas que el portal aún devuelve.</small>
     </label>
     <label>Datos para analizar
       <select name="solo_analizables"><option value="false">Todas las fichas</option><option value="true">Solo fichas analizables</option></select>
+      <small>Exige valor de subasta y referencia catastral cuando se activa.</small>
     </label>
     <label>Fichas a revisar por provincia
       <select name="limite"><option>5</option><option>10</option><option selected>20</option><option>30</option></select>
+      <small>Es el máximo de fichas que se consultan antes de aplicar los filtros.</small>
     </label>
   </div>
   <button type="submit">Buscar subastas</button>
@@ -97,7 +121,10 @@ small{display:block}
     </table>
   </div>
 </section>
+</div>
+<div id="operation-panel" role="tabpanel" hidden></div>
 </main>
+<script defer src="/panel.js"></script>
 <script>
 const municipios = {madrid: ['28','Madrid'], barcelona: ['08','Barcelona'], bilbao: ['48','Bilbao'], sevilla: ['41','Sevilla']};
 const form = document.querySelector('#search');

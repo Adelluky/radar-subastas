@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import HTMLResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -79,6 +79,11 @@ def buscador_web():
         for provincia in provincias_disponibles()
     )
     return pagina.replace("<!-- opciones-provincia -->", provincias)
+
+
+@app.get("/panel.js", include_in_schema=False)
+def panel_script():
+    return FileResponse(Path(__file__).with_name("panel.js"), media_type="text/javascript")
 
 
 @app.get("/health")
