@@ -14,10 +14,12 @@ Puerto 8010.
 from __future__ import annotations
 
 import os
+from html import escape
+from pathlib import Path
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import Response
+from fastapi.responses import HTMLResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -67,6 +69,16 @@ class CalculadoraIn(BaseModel):
     alquiler_mensual: float = Field(..., gt=0)
     provincia: Optional[str] = Field(None, description="Determina el ITP aplicable")
     supuestos: Optional[SupuestosIn] = None
+
+
+@app.get("/", include_in_schema=False, response_class=HTMLResponse)
+def buscador_web():
+    pagina = Path(__file__).with_name("buscador.html").read_text(encoding="utf-8")
+    provincias = "".join(
+        f'<option value="{provincia["codigo"]}">{escape(provincia["nombre"])}</option>'
+        for provincia in provincias_disponibles()
+    )
+    return pagina.replace("<!-- opciones-provincia -->", provincias)
 
 
 @app.get("/health")
@@ -230,7 +242,8 @@ def oportunidades(provincia: str = Query("madrid"), limite: int = Query(12, ge=1
                   riesgo_max: int = Query(None, ge=0, le=100),
                   incluir_cerradas: bool = Query(False,
                       description="El BOE tarda en marcar como cerradas las que ya vencieron"),
-                  solo_analizables: bool = Query(True)):
+                  solo_analizables: bool = Query(True),
+                  localidad: str | None = Query(None, max_length=100)):
     """Subastas ya valoradas y ordenadas por oportunidad.
 
     El listado crudo obliga a entrar una por una para saber si algo interesa, y
@@ -241,7 +254,7 @@ def oportunidades(provincia: str = Query("madrid"), limite: int = Query(12, ge=1
     """
     try:
         with BoeClient() as cliente:
-            subastas = cliente.buscar_con_detalle(provincia, limite)
+            subastas = cliente.buscar_con_detalle(provincia, limite, localidad)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:

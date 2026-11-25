@@ -23,6 +23,7 @@ from __future__ import annotations
 import html
 import re
 import time
+from urllib.parse import quote_plus
 from dataclasses import dataclass, field, asdict
 from datetime import datetime
 
@@ -151,7 +152,8 @@ class BoeClient:
         resp.raise_for_status()
         return resp.text
 
-    def buscar(self, provincia: str = "madrid", limite: int = 40) -> list[str]:
+    def buscar(self, provincia: str = "madrid", limite: int = 40,
+               localidad: str | None = None) -> list[str]:
         """Identificadores de subastas de inmuebles en curso en una provincia.
 
         `provincia` admite nombre ('madrid') o código INE de dos dígitos ('28').
@@ -168,6 +170,8 @@ class BoeClient:
             f"&page_hits={min(limite, 100)}"
             f"&sort_field%5B0%5D=SUBASTA.FECHA_FIN&sort_order%5B0%5D=desc&accion=Buscar"
         )
+        if localidad:
+            url += f"&campo%5B7%5D=BIEN.LOCALIDAD&dato%5B7%5D={quote_plus(localidad)}"
         doc = self._get(url)
         # Orden de aparición = orden de cierre; dict.fromkeys deduplica sin perderlo.
         return list(dict.fromkeys(re.findall(r"SUB-[A-Z]{2}-\d{4}-\d+", doc)))[:limite]
@@ -232,8 +236,10 @@ class BoeClient:
         ]
         return s
 
-    def buscar_con_detalle(self, provincia: str = "madrid", limite: int = 10) -> list[Subasta]:
-        return [self.detalle(i) for i in self.buscar(provincia, limite)]
+    def buscar_con_detalle(self, provincia: str = "madrid", limite: int = 10,
+                           localidad: str | None = None) -> list[Subasta]:
+        ids = self.buscar(provincia, limite, localidad)
+        return [self.detalle(i) for i in ids]
 
     def close(self) -> None:
         self._cliente.close()

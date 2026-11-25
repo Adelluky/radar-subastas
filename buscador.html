@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Radar de Subastas</title>
+<style>
+:root{font:16px/1.5 system-ui,sans-serif;color:#182d2a;background:#f3f6f3;--accent:#21594b;--line:#dce6df}
+*{box-sizing:border-box}
+body{margin:0}
+main{max-width:1240px;margin:auto;padding:36px 24px 64px}
+header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px}
+h1,h2,p{margin:0}
+h1{font-size:clamp(1.65rem,4vw,2.5rem);letter-spacing:-.045em}
+h2{font-size:1.15rem}
+a{color:var(--accent)}
+form,.results{background:white;border:1px solid var(--line);border-radius:14px;padding:22px;margin-bottom:18px}
+.filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:14px 18px;margin:14px 0 18px}
+label{display:grid;gap:5px;font-size:.9rem;font-weight:650}
+select,button{font:inherit;border-radius:8px;min-height:43px}
+select{width:100%;border:1px solid #b7c9c0;background:#fbfdfb;color:inherit;padding:7px 9px}
+button{background:var(--accent);color:white;border:0;padding:8px 22px;font-weight:650;cursor:pointer}
+button:disabled{opacity:.65;cursor:wait}
+.note,#status,small{color:#526661;font-size:.86rem}
+.note{margin-top:10px}
+#status{margin:6px 0 12px}
+.table{overflow:auto}
+table{border-collapse:collapse;width:100%;font-size:.9rem;text-align:left}
+th,td{padding:10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{background:#edf4ef;white-space:nowrap}
+td:not(:first-child){white-space:nowrap}
+td:first-child{min-width:185px}
+small{display:block}
+[hidden]{display:none!important}
+@media(max-width:600px){main{padding:20px 12px}form,.results{padding:15px}header a{font-size:.8rem}}
+</style>
+</head>
+<body>
+<main>
+<header><h1>Radar de Subastas</h1><a href="/docs">Panel técnico</a></header>
+<form id="search">
+  <h2>Buscar inmuebles del BOE</h2>
+  <div class="filters">
+    <label>Localidad o provincia
+      <select name="zona" id="zona">
+        <optgroup label="Municipios">
+          <option value="capitales">Madrid, Barcelona, Bilbao y Sevilla</option>
+          <option value="madrid">Madrid capital</option>
+          <option value="barcelona">Barcelona capital</option>
+          <option value="bilbao">Bilbao</option>
+          <option value="sevilla">Sevilla capital</option>
+        </optgroup>
+        <optgroup label="Provincias"><!-- opciones-provincia --></optgroup>
+      </select>
+    </label>
+    <label>Valor de subasta
+      <select name="precio_max"><option value="">Sin límite</option><option value="49999.99">Menos de 50.000 €</option><option value="99999.99" selected>Menos de 100.000 €</option><option value="149999.99">Menos de 150.000 €</option><option value="199999.99">Menos de 200.000 €</option><option value="299999.99">Menos de 300.000 €</option></select>
+    </label>
+    <label>Tasación publicada
+      <select name="tasacion"><option value="">Cualquiera</option><option value="known">Con tasación</option><option value="unknown">Sin tasación</option><option value="99999.99">Menos de 100.000 €</option><option value="199999.99">Menos de 200.000 €</option></select>
+    </label>
+    <label>Depósito máximo
+      <select name="deposito"><option value="">Sin límite</option><option value="1000">1.000 €</option><option value="2500">2.500 €</option><option value="5000">5.000 €</option><option value="10000">10.000 €</option></select>
+    </label>
+    <label>Fecha de cierre
+      <select name="plazo"><option value="">Cualquier fecha</option><option value="7">Próximos 7 días</option><option value="15">Próximos 15 días</option><option value="30">Próximos 30 días</option></select>
+    </label>
+    <label>Visitable
+      <select name="visitable"><option value="">Cualquiera</option><option value="si">Sí</option><option value="no">No</option><option value="unknown">Sin confirmar</option></select>
+    </label>
+    <label>Capital necesario estimado
+      <select name="entrada_max"><option value="">Sin límite</option><option value="10000">Hasta 10.000 €</option><option value="25000">Hasta 25.000 €</option><option value="50000">Hasta 50.000 €</option></select>
+    </label>
+    <label>Puntuación de riesgo
+      <select name="riesgo_max"><option value="">Sin límite</option><option value="25">Hasta 25 de 100</option><option value="50">Hasta 50 de 100</option><option value="75">Hasta 75 de 100</option></select>
+    </label>
+    <label>Estado
+      <select name="incluir_cerradas"><option value="false">En curso</option><option value="true">En curso y vencidas que aún lista el BOE</option></select>
+    </label>
+    <label>Datos para analizar
+      <select name="solo_analizables"><option value="false">Todas las fichas</option><option value="true">Solo fichas analizables</option></select>
+    </label>
+    <label>Fichas a revisar por provincia
+      <select name="limite"><option>5</option><option>10</option><option selected>20</option><option>30</option></select>
+    </label>
+  </div>
+  <button type="submit">Buscar subastas</button>
+  <p class="note">Los filtros se aplican a las fichas que devuelve la consulta. El valor de subasta y la tasación son importes distintos. En el listado pueden aparecer viviendas, locales y otros inmuebles.</p>
+</form>
+<section class="results">
+  <h2>Resultados</h2>
+  <p id="status" role="status">Selecciona los filtros y pulsa Buscar subastas.</p>
+  <div class="table" id="result-table" hidden>
+    <table>
+      <thead><tr><th>Localidad y ficha</th><th>Valor de subasta</th><th>Tasación</th><th>Depósito</th><th>Fecha de cierre</th><th>Visitable</th><th>Riesgo</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+</section>
+</main>
+<script>
+const municipios = {madrid: ['28','Madrid'], barcelona: ['08','Barcelona'], bilbao: ['48','Bilbao'], sevilla: ['41','Sevilla']};
+const form = document.querySelector('#search');
+const button = form.querySelector('button');
+const statusText = document.querySelector('#status');
+const table = document.querySelector('#result-table');
+const rows = document.querySelector('#rows');
+const euros = new Intl.NumberFormat('es-ES', {style:'currency', currency:'EUR'});
+const fecha = new Intl.DateTimeFormat('es-ES', {dateStyle:'short', timeStyle:'short', timeZone:'Europe/Madrid'});
+const normaliza = value => String(value ?? '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+const visita = value => ['si','no'].includes(normaliza(value)) ? normaliza(value) : 'unknown';
+const dinero = value => value == null ? 'Sin dato' : euros.format(value);
+
+function coincide(item, options) {
+  const {tasacion, deposito, plazo, visitable, precio_max, entrada_max} = options;
+  if (precio_max && !(item.valor_subasta > 0 && item.valor_subasta <= Number(precio_max))) return false;
+  if (entrada_max && item.capital_necesario_estimado == null) return false;
+  if (tasacion === 'known' && !(item.tasacion > 0)) return false;
+  if (tasacion === 'unknown' && item.tasacion > 0) return false;
+  if (Number(tasacion) && !(item.tasacion > 0 && item.tasacion <= Number(tasacion))) return false;
+  if (deposito && !(item.deposito != null && item.deposito <= Number(deposito))) return false;
+  const tiempo = Date.parse(item.fecha_fin) - Date.now();
+  if (plazo && !(tiempo >= 0 && tiempo <= Number(plazo) * 86400000)) return false;
+  return !visitable || visita(item.visitable) === visitable;
+}
+
+async function consultar([provincia, localidad], options) {
+  const params = new URLSearchParams({provincia});
+  if (localidad) params.set("localidad", localidad);
+  for (const key of ['limite','precio_max','entrada_max','riesgo_max','incluir_cerradas','solo_analizables']) {
+    if (options[key]) params.set(key, options[key]);
+  }
+  const response = await fetch('/subastas/oportunidades?' + params);
+  if (!response.ok) throw new Error('HTTP ' + response.status);
+  const data = await response.json();
+  return data.oportunidades.filter(item =>
+    (!localidad || normaliza(localidad) === normaliza(item.localidad)) && coincide(item, options));
+}
+
+function pintar(item) {
+  const row = rows.insertRow();
+  const lugar = row.insertCell();
+  const link = document.createElement('a');
+  link.href = 'https://subastas.boe.es/detalleSubasta.php?idSub=' + encodeURIComponent(item.identificador);
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  link.textContent = item.localidad || item.identificador;
+  lugar.append(link);
+  const detalle = document.createElement('small');
+  detalle.textContent = item.direccion || item.identificador;
+  lugar.append(detalle);
+  const cierre = Date.parse(item.fecha_fin);
+  const campos = [
+    dinero(item.valor_subasta), dinero(item.tasacion > 0 ? item.tasacion : null), dinero(item.deposito),
+    Number.isFinite(cierre) ? fecha.format(cierre) : 'Sin dato',
+    {si:'Sí', no:'No', unknown:'Sin confirmar'}[visita(item.visitable)],
+    item.riesgo_puntuacion == null ? 'Sin dato' : item.riesgo_puntuacion + ' / 100'
+  ];
+  for (const campo of campos) row.insertCell().textContent = campo;
+}
+
+form.addEventListener('submit', async event => {
+  event.preventDefault();
+  const options = Object.fromEntries(new FormData(form));
+  const zonas = options.zona === 'capitales' ? Object.values(municipios) :
+    [municipios[options.zona] || [options.zona, null]];
+  button.disabled = true;
+  rows.replaceChildren();
+  table.hidden = true;
+  statusText.textContent = 'Consultando fichas del BOE. Puede tardar unos minutos.';
+  const resultados = [];
+  const fallos = [];
+  try {
+    for (const zona of zonas) {
+      try {
+        resultados.push(...await consultar(zona, options));
+      } catch (error) {
+        fallos.push((zona[1] || form.elements.zona.selectedOptions[0].textContent) + ' (' + error.message + ')');
+      }
+    }
+    resultados.forEach(pintar);
+    table.hidden = resultados.length === 0;
+    const resumen = resultados.length ? resultados.length + ' fichas coinciden con los filtros.' :
+      (fallos.length === zonas.length ? 'La búsqueda no se pudo completar.' : 'La muestra consultada no contiene coincidencias.');
+    statusText.textContent = resumen + (fallos.length ? ' Error de consulta en ' + fallos.join(', ') + '.' : '');
+  } finally {
+    button.disabled = false;
+  }
+});
+</script>
+</body>
+</html>
