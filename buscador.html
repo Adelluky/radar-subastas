@@ -55,6 +55,25 @@ pre{background:#edf4ef;padding:14px;border-radius:8px;max-height:60vh;overflow:a
 .tabla-radar th[aria-sort]{background:#d9e9df}
 .saldo-negativo{color:#a22f31;font-weight:650}.saldo-positivo{color:#176343;font-weight:650}
 summary{cursor:pointer;color:var(--accent)}
+.resumen-banco{background:#f3f8f5;padding:16px;border-radius:10px}
+.resumen-banco h3{font-size:1.2rem}
+.resumen-banco p{margin:6px 0}
+.banco-datos{display:grid;grid-template-columns:minmax(120px,1fr) minmax(0,1fr);gap:3px 10px;font-size:.9rem}
+.banco-datos dt{font-weight:600}
+.banco-datos dd{margin:0;overflow-wrap:anywhere}
+@media print{
+  body.imprimir-banco{background:white}
+  .imprimir-banco main{padding:0}
+  .imprimir-banco main > :not(#operation-panel),
+  .imprimir-banco #operation-panel > section > :not(.dashboard-radar),
+  .imprimir-banco .dashboard-radar > :not(.resumen-banco),
+  .imprimir-banco .resumen-banco button{display:none!important}
+  .imprimir-banco .results,.imprimir-banco .dashboard-radar,.imprimir-banco .resumen-banco{
+    margin:0;padding:0;border:0;background:white
+  }
+  .imprimir-banco .resumen-banco .table{overflow:visible}
+  .imprimir-banco .resumen-banco th,.imprimir-banco .resumen-banco td{padding:5px;white-space:normal}
+}
 [hidden]{display:none!important}
 @media(max-width:600px){main{padding:20px 12px}form,.results{padding:15px}header a{font-size:.8rem}}
 </style>

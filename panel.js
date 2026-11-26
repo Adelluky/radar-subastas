@@ -347,6 +347,98 @@ function datosCsvRadar(texto) {
   return {total:municipios.length,municipios,notas};
 }
 
+function resumenBanco(subasta, gastos, retorno, prudente) {
+  const resumen = elemento('section');
+  resumen.className = 'resumen-banco bloque-radar';
+  const boton = elemento('button','Imprimir o guardar PDF');
+  boton.type = 'button';
+  boton.addEventListener('click', () => {
+    document.body.classList.add('imprimir-banco');
+    try {
+      window.print();
+    } finally {
+      document.body.classList.remove('imprimir-banco');
+    }
+  });
+  resumen.append(elemento('h3','Resumen para el banco'), boton);
+  const ficha = elemento('p');
+  ficha.append(lecturaRadar('identificador',subasta.identificador));
+  const ubicacion = [subasta.direccion,subasta.localidad,subasta.provincia].filter(Boolean);
+  if (ubicacion.length) ficha.append(' · ' + [...new Set(ubicacion)].join(', '));
+  resumen.append(ficha);
+
+  const pendientes = [];
+  if (gastos.deuda_asumida == null) pendientes.push('saldo de deuda asumida');
+  if (gastos.deuda_pendiente > 0 && gastos.cuota_deuda == null) pendientes.push('cuota de la deuda asumida');
+  if (gastos.valor_referencia_catastro == null) pendientes.push('valor de referencia del Catastro');
+  if (pendientes.length) {
+    resumen.append(elemento('p','Estimación provisional. Pendiente de verificar: ' + pendientes.join(', ') + '.'));
+  }
+
+  if (retorno && prudente) {
+    const lectura = retorno.cash_flow_anual < 0
+      ? 'El escenario base requiere una aportación para cubrir gastos y cuotas.'
+      : prudente.cash_flow_anual < 0
+        ? 'El alquiler cubre gastos y cuotas en el escenario base. Con una renta inferior haría falta aportar efectivo.'
+        : 'El alquiler cubre gastos y cuotas en los dos escenarios.';
+    resumen.append(elemento('p',lectura + ' Flujo mensual estimado: ' +
+      monedaRadar.format(retorno.cash_flow_mensual) + ' en el escenario base y ' +
+      monedaRadar.format(prudente.cash_flow_mensual) + ' en el prudente.'));
+  } else {
+    resumen.append(elemento('p','Falta una estimación de alquiler para valorar la cobertura de gastos y cuotas.'));
+  }
+
+  const inversion = ['precio_compra','origen_precio','inversion_total','capital_aportado','hipoteca',
+    'cuota_mensual','deuda_asumida','deuda_liquidada','deuda_pendiente','cuota_deuda'];
+  const detalle = elemento('dl');
+  detalle.className = 'banco-datos';
+  function dato(clave, valor) {
+    const dd = elemento('dd');
+    dd.append(lecturaRadar(clave,valor));
+    detalle.append(elemento('dt',tituloRadar(clave)),dd);
+  }
+  for (const clave of inversion) dato(clave,gastos[clave]);
+  if (retorno) {
+    dato('origen_alquiler',retorno.origen_alquiler);
+    dato('retorno_caja_pct',retorno.retorno_caja_pct);
+    dato('precio_maximo_cash_flow_cero',retorno.precio_maximo_cash_flow_cero);
+  }
+  resumen.append(detalle);
+
+  if (retorno && prudente) {
+    const contenedor = elemento('div');
+    contenedor.className = 'table';
+    const tabla = elemento('table');
+    const encabezado = tabla.createTHead().insertRow();
+    const reduccion = numeroRadar.format(prudente.reduccion_alquiler * 100);
+    for (const titulo of ['Concepto','Base / mes','Base / año',
+      '−' + reduccion + ' % renta / mes','−' + reduccion + ' % renta / año']) {
+      const th = elemento('th',titulo);
+      th.scope = 'col';
+      encabezado.append(th);
+    }
+    const cuerpo = tabla.createTBody();
+    for (const [titulo, mensual, anual] of [
+      ['Alquiler bruto','alquiler_mensual','ingresos_anuales_brutos'],
+      ['Ingresos efectivos','ingresos_mensuales_efectivos','ingresos_anuales_efectivos'],
+      ['Salidas de caja','salidas_caja_mensuales','salidas_caja_anuales'],
+      ['Flujo de caja','cash_flow_mensual','cash_flow_anual']
+    ]) {
+      const fila = cuerpo.insertRow();
+      const th = elemento('th',titulo);
+      th.scope = 'row';
+      fila.append(th);
+      for (const escenario of [retorno,prudente]) {
+        for (const clave of [mensual,anual]) fila.insertCell().append(lecturaRadar(clave,escenario[clave]));
+      }
+    }
+    contenedor.append(tabla);
+    resumen.append(contenedor);
+  }
+  resumen.append(elemento('p','Los ingresos efectivos descuentan la vacancia. Las salidas incluyen gastos operativos, IRPF estimado y ambas cuotas. Estudio económico del inmueble basado en los supuestos indicados.'));
+  return resumen;
+}
+
 function montarPanel(spec) {
   function resolver(schema) {
     if (schema.$ref) return spec.components.schemas[schema.$ref.split('/').pop()];
@@ -502,7 +594,10 @@ function montarPanel(spec) {
         }
         if (respuesta.ok && datos && typeof datos === 'object') {
           if (path === '/subastas/analizar') {
-            const {gastos_inversion, ingresos_retorno, rentabilidad, ...resto} = datos;
+            const {gastos_inversion, ingresos_retorno, escenario_prudente, rentabilidad, ...resto} = datos;
+            if (gastos_inversion && resto.subasta) {
+              dashboard.append(resumenBanco(resto.subasta,gastos_inversion,ingresos_retorno,escenario_prudente));
+            }
             if (gastos_inversion && (gastos_inversion.deuda_asumida == null ||
                 gastos_inversion.deuda_pendiente > 0 && gastos_inversion.cuota_deuda == null ||
                 gastos_inversion.valor_referencia_catastro == null)) {

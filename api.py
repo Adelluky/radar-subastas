@@ -405,12 +405,12 @@ def analizar_subasta(datos: AnalisisIn):
     if alquiler is None:
         avisos.append("Sin alquiler disponible. Solo se presenta la inversión y los gastos fijos conocidos.")
 
-    def calcular(importe):
-        return analizar(importe, alquiler or 0, provincia, supuestos,
+    def calcular(importe, renta):
+        return analizar(importe, renta, provincia, supuestos,
                         base_itp=max(importe, referencia or 0), deuda_asumida=deuda,
                         deuda_liquidada=liquidacion, cuota_deuda=cuota_deuda)
 
-    a = calcular(precio)
+    a = calcular(precio, alquiler or 0)
     formalizacion = a.detalle["gastos_formalizacion"]
     gastos = {
         "inversion_total": a.inversion_total,
@@ -449,22 +449,36 @@ def analizar_subasta(datos: AnalisisIn):
     }
     financiero = a.to_dict() if alquiler is not None else None
     retorno = None
+    escenario_prudente = None
     if financiero is not None:
         caja_anual = a.detalle["cash_flow_anual"]
         techo = None
         if deuda <= liquidacion or datos.cuota_deuda is not None:
             bajo, alto = .01, max(precio, alquiler * 12 * 60, 1)
-            while alto < 1e9 and calcular(alto).detalle["cash_flow_anual"] >= 0:
+            while alto < 1e9 and calcular(alto, alquiler).detalle["cash_flow_anual"] >= 0:
                 alto *= 2
-            if calcular(bajo).detalle["cash_flow_anual"] >= 0 > calcular(alto).detalle["cash_flow_anual"]:
+            if calcular(bajo, alquiler).detalle["cash_flow_anual"] >= 0 > calcular(alto, alquiler).detalle["cash_flow_anual"]:
                 for _ in range(50):
                     medio = (bajo + alto) / 2
-                    if calcular(medio).detalle["cash_flow_anual"] >= 0:
+                    if calcular(medio, alquiler).detalle["cash_flow_anual"] >= 0:
                         bajo = medio
                     else:
                         alto = medio
                 techo = int(bajo * 100) / 100
         financiero["precio_maximo_cash_flow_cero"] = techo
+        reduccion_alquiler = 0.10
+        prudente = calcular(precio, round(alquiler * (1 - reduccion_alquiler), 2))
+        escenario_prudente = {
+            "reduccion_alquiler": reduccion_alquiler,
+            "alquiler_mensual": prudente.alquiler_mensual,
+            "ingresos_anuales_brutos": prudente.ingresos_anuales_brutos,
+            "ingresos_mensuales_efectivos": prudente.detalle["ingresos_mensuales_efectivos"],
+            "ingresos_anuales_efectivos": prudente.ingresos_anuales_efectivos,
+            "salidas_caja_mensuales": prudente.detalle["salidas_caja_mensuales"],
+            "salidas_caja_anuales": prudente.detalle["salidas_caja_anuales"],
+            "cash_flow_mensual": prudente.cash_flow_mensual,
+            "cash_flow_anual": prudente.detalle["cash_flow_anual"],
+        }
         retorno = {
             "cash_flow_mensual": a.cash_flow_mensual,
             "cash_flow_anual": caja_anual,
@@ -536,6 +550,7 @@ def analizar_subasta(datos: AnalisisIn):
 
     return {
         "gastos_inversion": gastos,
+        "escenario_prudente": escenario_prudente,
         "ingresos_retorno": retorno,
         "se_paga_solo": autofinanciacion,
         "subasta": subasta.to_dict() | {"url": subasta.url},
