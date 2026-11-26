@@ -36,6 +36,11 @@ const campos = {
   riesgo_max: ['Riesgo máximo (0–100)', 'Las puntuaciones más altas indican más señales de riesgo.'],
   incluir_cerradas: ['Incluir fichas vencidas', 'Incluye fichas aún listadas por el BOE cuyo plazo ya ha terminado.'],
   solo_analizables: ['Solo fichas analizables', 'Exige que la ficha publique valor de subasta y referencia catastral.'],
+  precio_adjudicacion: ['Precio previsto de adjudicación (€)', 'Importe que prevés pagar por el remate. Si lo dejas vacío, el estudio usa el valor publicado por el BOE.'],
+  valor_referencia_catastro: ['Valor de referencia del Catastro (€)', 'Valor fiscal certificado para el bien o derecho adquirido. Si falta, el ITP se marca como provisional.'],
+  deuda_asumida: ['Saldo de deuda asumida (€)', 'Saldo confirmado que quedará a tu cargo. Indica cero si has verificado que no asumes deuda. Vacío significa pendiente de verificar.'],
+  deuda_liquidada: ['Deuda que liquidarás al adquirir (€)', 'Parte del saldo anterior que pagarás al inicio. Se suma al efectivo inicial.'],
+  cuota_deuda: ['Cuota mensual de deuda pendiente (€)', 'Cuota de la deuda asumida tras el pago inicial. Indica cero si has confirmado que no hay cuota.'],
   identificador: ['Identificador BOE', 'Referencia con formato SUB-JA-2026-268716. Puedes copiarla de una ficha del BOE.'],
   alquiler_mensual: ['Alquiler mensual bruto (€)', 'Ingreso mensual de alquiler. En el análisis de subasta, vacíalo para dejar que la API lo estime.'],
   precio_compra: ['Precio de compra (€)', 'Importe de adquisición utilizado para calcular financiación, gastos y rentabilidad.'],
@@ -104,6 +109,8 @@ const tablasRadar = {
   provincias: ['nombre','codigo']
 };
 const indicadoresRadar = {
+  gastos_inversion: ['inversion_total','capital_aportado','deuda_asumida','itp'],
+  ingresos_retorno: ['cash_flow_mensual','cash_flow_anual','rentabilidad_neta','retorno_caja_pct'],
   analisis: ['cash_flow_mensual','rentabilidad_neta','capital_aportado','cuota_mensual','alquiler_mensual'],
   rentabilidad: ['cash_flow_mensual','rentabilidad_neta','capital_aportado','cuota_mensual','alquiler_mensual'],
   se_paga_solo: ['veredicto','cash_flow_mensual','entrada_minima_pct','capital_extra_necesario'],
@@ -132,6 +139,17 @@ const resumenRadar = {
 };
 
 const etiquetasRadar = {
+  gastos_inversion:'Gastos e inversión inicial', ingresos_retorno:'Ingresos y retorno de la inversión',
+  deuda_asumida:'Deuda asumida', deuda_liquidada:'Deuda liquidada al adquirir', deuda_pendiente:'Saldo pendiente tras adquirir',
+  cuota_deuda:'Cuota mensual de la deuda asumida', retorno_caja_pct:'ROI de caja sobre el capital propio',
+  cash_flow_anual:'Flujo de caja anual', base_itp:'Base utilizada para estimar el ITP', itp_pct:'Tipo de ITP',
+  itp:'ITP estimado', deposito:'Depósito del BOE (fuera de los gastos)', hipoteca:'Importe de la nueva hipoteca',
+  cuota_mensual:'Cuota de la nueva hipoteca', entrada_euros:'Entrada para la compra', notaria:'Notaría y copias',
+  registro:'Registro de la Propiedad', gestoria:'Gestoría', origen_precio:'Origen del precio',
+  perdida_vacancia:'Alquiler perdido por vacancia', anios_recuperar_capital_caja:'Años para recuperar el capital con el flujo de caja',
+  formulas:'Cómo se calculan los retornos', gastos_anuales:'Gastos operativos anuales', irpf_estimado:'IRPF anual estimado',
+  ibi_anual:'IBI anual', comunidad_anual:'Comunidad anual', seguro_anual:'Seguro anual',
+  mantenimiento_anual:'Mantenimiento anual', gestion_anual:'Gestión anual del alquiler',
   direccion:'Dirección', tasacion:'Tasación', valor_subasta:'Valor de subasta', fecha_fin:'Fecha de cierre', identificador:'Ficha del BOE',
   cash_flow_mensual:'Flujo de caja mensual', capital_aportado:'Capital propio aportado',
   capital_necesario_estimado:'Capital inicial estimado', precio_maximo_cash_flow_cero:'Precio máximo con flujo de caja cero',
@@ -147,14 +165,14 @@ const monedaRadar = new Intl.NumberFormat('es-ES', {style:'currency',currency:'E
 const numeroRadar = new Intl.NumberFormat('es-ES', {maximumFractionDigits:2});
 const unidadPorcentaje = new Set(['rentabilidad_bruta','rentabilidad_neta','retorno_capital_aportado',
   'entrada_pct','entrada_pct_usada','entrada_minima_pct','interes_anual','euribor_12m','tipo_estimado',
-  'diferencial','ocupacion_minima_pct','itp_pct','vacancia_pct','irpf_marginal']);
+  'diferencial','retorno_caja_pct','ocupacion_minima_pct','itp_pct','vacancia_pct','irpf_marginal']);
 
 function tituloRadar(clave) {
   return etiquetasRadar[clave] || clave.replaceAll('_',' ').replace(/^./, letra => letra.toUpperCase());
 }
 
 function valorRadar(clave, valor) {
-  if (valor == null || valor === '') return 'Sin dato';
+  if (valor == null || valor === '') return clave === 'deuda_asumida' ? 'Pendiente de verificar' : 'Sin dato';
   if (typeof valor === 'boolean') return valor ? 'Sí' : 'No';
   if (clave === 'status' && valor === 'ok') return 'Operativa';
   if (['fecha_inicio','fecha_fin','fecha_dato'].includes(clave) && /^\d{4}-\d{2}-\d{2}/.test(valor)) {
@@ -168,7 +186,7 @@ function valorRadar(clave, valor) {
   if (/^(anio|año)/.test(clave) && /^(anio|anio_construccion|alquiler_anio)$/.test(clave)) return String(valor);
   if (/superficie/.test(clave)) return numeroRadar.format(valor) + ' m²';
   if (/precio_m2|alquiler_m2/.test(clave)) return monedaRadar.format(valor) + '/m²';
-  if (/^(precio_|valor_subasta|valor_mercado|tasacion|deposito|cash_flow|cuota_|capital_|alquiler_mensual|renta_hogar|inversion_total|hipoteca$|entrada_minima_euros|gastos_|ingresos_|beneficio_|irpf_estimado|itp$|reforma$)/.test(clave)) return monedaRadar.format(valor);
+  if (/^(deuda_|cuota_deuda|base_itp|valor_referencia_catastro|entrada_euros|notaria$|registro$|gestoria$|ibi_anual|comunidad_anual|seguro_anual|mantenimiento_anual|gestion_anual|perdida_vacancia|precio_|valor_subasta|valor_mercado|tasacion|deposito|cash_flow|cuota_|capital_|alquiler_mensual|renta_hogar|inversion_total|hipoteca$|entrada_minima_euros|gastos_|ingresos_|beneficio_|irpf_estimado|itp$|reforma$)/.test(clave)) return monedaRadar.format(valor);
   return numeroRadar.format(valor);
 }
 
@@ -184,7 +202,7 @@ function lecturaRadar(clave, valor) {
     }
   }
   const salida = elemento('span', valorRadar(clave, valor));
-  if (clave === 'cash_flow_mensual' && typeof valor === 'number') salida.className = valor < 0 ? 'saldo-negativo' : 'saldo-positivo';
+  if (['cash_flow_mensual','cash_flow_anual','retorno_caja_pct'].includes(clave) && typeof valor === 'number') salida.className = valor < 0 ? 'saldo-negativo' : 'saldo-positivo';
   return salida;
 }
 
@@ -478,7 +496,23 @@ function montarPanel(spec) {
           descargar.hidden = false;
         }
         if (respuesta.ok && datos && typeof datos === 'object') {
-          dashboard.append(bloqueRadar(datos, resumenRadar[path]));
+          if (path === '/subastas/analizar') {
+            const {gastos_inversion, ingresos_retorno, rentabilidad, ...resto} = datos;
+            if (gastos_inversion && (gastos_inversion.deuda_asumida == null ||
+                gastos_inversion.deuda_pendiente > 0 && gastos_inversion.cuota_deuda == null ||
+                gastos_inversion.valor_referencia_catastro == null)) {
+              const avisoProvisional = elemento('p','Estimación provisional. Revisa los avisos de gastos e inversión.');
+              avisoProvisional.className = 'note';
+              dashboard.append(avisoProvisional);
+            }
+            dashboard.append(bloqueRadar({
+              gastos_inversion,
+              ingresos_retorno: ingresos_retorno || {aviso:'Sin estimación de alquiler para calcular el retorno.'},
+              ...resto
+            }));
+          } else {
+            dashboard.append(bloqueRadar(datos, resumenRadar[path]));
+          }
           dashboard.hidden = false;
         }
         resumenOriginal.textContent = tipo.includes('json') ? 'Ver JSON original' : 'Ver respuesta original';

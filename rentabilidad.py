@@ -123,17 +123,20 @@ class Analisis:
 
 
 def analizar(precio_compra: float, alquiler_mensual: float, provincia: str | None = None,
-             s: Supuestos | None = None) -> Analisis:
+             s: Supuestos | None = None, *, base_itp: float | None = None,
+             deuda_asumida: float = 0, deuda_liquidada: float = 0,
+             cuota_deuda: float = 0) -> Analisis:
     """Análisis completo de una operación de compra para alquilar."""
     s = s or Supuestos()
     if precio_compra <= 0:
         raise ValueError("El precio de compra debe ser mayor que cero")
 
     from impuestos import calcular_itp, gastos_compra as calcular_gastos
+    base_itp = precio_compra if base_itp is None else base_itp
     if s.itp_pct is not None:
-        itp, itp_pct, info_itp = precio_compra * s.itp_pct, s.itp_pct, {"nota": "tipo indicado por el usuario"}
+        itp, itp_pct, info_itp = base_itp * s.itp_pct, s.itp_pct, {"nota": "tipo indicado por el usuario"}
     else:
-        info_itp = calcular_itp(precio_compra, provincia)
+        info_itp = calcular_itp(base_itp, provincia)
         itp, itp_pct = info_itp["cuota"], info_itp["tipo_efectivo"]
 
     # Los aranceles escalan con el precio: un fijo de 2.500 € se quedaba corto
@@ -141,11 +144,11 @@ def analizar(precio_compra: float, alquiler_mensual: float, provincia: str | Non
     info_gastos = calcular_gastos(precio_compra, en_subasta=True)
     otros = s.notaria_registro_gestoria if s.notaria_registro_gestoria else info_gastos["total"]
     gastos_compra = itp + otros
-    inversion_total = precio_compra + gastos_compra + s.reforma
+    inversion_total = precio_compra + deuda_asumida + gastos_compra + s.reforma
 
     hipoteca = precio_compra * (1 - s.entrada_pct)
     # Los gastos e impuestos no se financian: salen íntegros del bolsillo.
-    capital_aportado = precio_compra * s.entrada_pct + gastos_compra + s.reforma
+    capital_aportado = precio_compra * s.entrada_pct + deuda_liquidada + gastos_compra + s.reforma
     cuota = cuota_hipoteca(hipoteca, s.interes_anual, s.anios_hipoteca)
 
     ingresos_brutos = alquiler_mensual * 12
@@ -167,7 +170,7 @@ def analizar(precio_compra: float, alquiler_mensual: float, provincia: str | Non
 
     neto_antes_impuestos = ingresos_efectivos - gastos
     neto = neto_antes_impuestos - irpf
-    cash_flow_mensual = (ingresos_efectivos - gastos - irpf) / 12 - cuota
+    cash_flow_mensual = (ingresos_efectivos - gastos - irpf) / 12 - cuota - cuota_deuda
 
     rent_bruta = ingresos_brutos / inversion_total
     rent_neta = neto / inversion_total
@@ -198,6 +201,7 @@ def analizar(precio_compra: float, alquiler_mensual: float, provincia: str | Non
         anios_recuperar_capital=round(anios_recuperar, 1) if anios_recuperar else None,
         detalle={
             "vacancia_aplicada_pct": s.vacancia_pct,
+            "cash_flow_anual": round(cash_flow_mensual * 12, 2),
             "meses_vacio_equivalente": round(s.vacancia_pct * 12, 1),
             "intereses_primer_anio": round(intereses_primer_anio, 2),
             "itp": info_itp,

@@ -61,6 +61,11 @@ class SupuestosIn(BaseModel):
 class AnalisisIn(BaseModel):
     identificador: str = Field(..., description="Identificador de la subasta, p. ej. SUB-JA-2026-265154")
     alquiler_mensual: Optional[float] = Field(None, ge=0, description="Alquiler real si lo conoces")
+    precio_adjudicacion: float | None = Field(None, gt=0)
+    valor_referencia_catastro: float | None = Field(None, gt=0)
+    deuda_asumida: float | None = Field(None, ge=0)
+    deuda_liquidada: float = Field(0, ge=0)
+    cuota_deuda: float | None = Field(None, ge=0)
     supuestos: Optional[SupuestosIn] = None
 
 
@@ -369,28 +374,117 @@ def analizar_subasta(datos: AnalisisIn):
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"No se pudo leer la subasta: {e}")
 
-    if not subasta.valor_subasta:
-        raise HTTPException(status_code=422,
-                            detail="La subasta no publica valor de salida; no se puede analizar.")
+    precio = datos.precio_adjudicacion or subasta.valor_subasta
+    if not precio or precio <= 0:
+        raise HTTPException(422, "Introduce un precio previsto para analizar esta ficha.")
+    deuda = datos.deuda_asumida or 0
+    liquidacion = datos.deuda_liquidada
+    if liquidacion > deuda or (datos.cuota_deuda and deuda <= liquidacion):
+        raise HTTPException(422, "La liquidación debe ser como máximo el saldo asumido. Solo indica cuota si queda deuda pendiente.")
 
     inmueble = (consultar_catastro(subasta.referencia_catastral).to_dict()
                 if subasta.referencia_catastral else
                 {"error": "La subasta no publica referencia catastral"})
-
-    v = valorar(subasta.to_dict(), inmueble, datos.alquiler_mensual)
-    riesgo = evaluar_riesgo(subasta.to_dict(), inmueble)
-
+    ficha = subasta.to_dict()
+    v = valorar(ficha | {"valor_subasta": precio}, inmueble, datos.alquiler_mensual)
+    alquiler = datos.alquiler_mensual if datos.alquiler_mensual is not None else v.alquiler_mensual
+    riesgo = evaluar_riesgo(ficha, inmueble)
     supuestos = datos.supuestos.a_supuestos() if datos.supuestos else Supuestos()
-    financiero = None
-    if v.alquiler_mensual:
-        financiero = analizar(
-            subasta.valor_subasta, v.alquiler_mensual,
-            inmueble.get("provincia") or subasta.provincia, supuestos,
-        ).to_dict()
-        financiero["precio_maximo_cash_flow_cero"] = precio_maximo_para_cash_flow(
-            v.alquiler_mensual, 0.0,
-            inmueble.get("provincia") or subasta.provincia, supuestos,
-        )
+    provincia = inmueble.get("provincia") or subasta.provincia
+    referencia = datos.valor_referencia_catastro
+    cuota_deuda = datos.cuota_deuda or 0
+    avisos = []
+    if datos.deuda_asumida is None:
+        avisos.append("Deuda asumida pendiente de verificar. Los totales provisionales usan 0 € de deuda.")
+    if deuda > liquidacion and datos.cuota_deuda is None:
+        avisos.append("Falta la cuota de la deuda pendiente. Los indicadores de caja se muestran sin ella.")
+    if referencia is None:
+        avisos.append("Falta el valor de referencia del Catastro. El ITP es provisional.")
+    avisos.append("Escenario sujeto a ITP. Confirma el régimen fiscal, las cargas y la base imponible aplicable al expediente.")
+    avisos.append("Fuera de la estimación: derramas, procurador, gastos del procedimiento y costes de recuperar la posesión.")
+    if alquiler is None:
+        avisos.append("Sin alquiler disponible. Solo se presenta la inversión y los gastos fijos conocidos.")
+
+    def calcular(importe):
+        return analizar(importe, alquiler or 0, provincia, supuestos,
+                        base_itp=max(importe, referencia or 0), deuda_asumida=deuda,
+                        deuda_liquidada=liquidacion, cuota_deuda=cuota_deuda)
+
+    a = calcular(precio)
+    formalizacion = a.detalle["gastos_formalizacion"]
+    gastos = {
+        "inversion_total": a.inversion_total,
+        "capital_aportado": a.capital_aportado,
+        "precio_compra": a.precio_compra,
+        "origen_precio": "Adjudicación prevista" if datos.precio_adjudicacion else "Valor publicado por el BOE",
+        "deuda_asumida": datos.deuda_asumida,
+        "deuda_liquidada": liquidacion,
+        "deuda_pendiente": deuda - liquidacion if datos.deuda_asumida is not None else None,
+        "cuota_deuda": datos.cuota_deuda,
+        "valor_referencia_catastro": referencia,
+        "base_itp": max(precio, referencia or 0),
+        "itp_pct": a.itp_pct,
+        "itp": a.itp,
+        "notaria": formalizacion["notaria"],
+        "registro": formalizacion["registro"],
+        "gestoria": formalizacion["gestoria"],
+        "reforma": a.reforma,
+        "entrada_euros": round(precio * supuestos.entrada_pct, 2),
+        "hipoteca": a.hipoteca,
+        "cuota_mensual": a.cuota_mensual,
+        "deposito": subasta.deposito,
+        "ibi_anual": supuestos.ibi_anual,
+        "comunidad_anual": round(supuestos.comunidad_mensual * 12, 2),
+        "seguro_anual": supuestos.seguro_anual,
+        "mantenimiento_anual": round((alquiler or 0) * 12 * (1 - supuestos.vacancia_pct)
+                                    * supuestos.mantenimiento_pct_alquiler, 2) if alquiler is not None else None,
+        "gestion_anual": round((alquiler or 0) * 12 * (1 - supuestos.vacancia_pct)
+                              * supuestos.gestion_pct_alquiler, 2) if alquiler is not None else None,
+        "gastos_anuales": a.gastos_anuales if alquiler is not None else None,
+        "irpf_estimado": a.irpf_estimado if alquiler is not None else None,
+        "avisos": avisos,
+    }
+    financiero = a.to_dict() if alquiler is not None else None
+    retorno = None
+    if financiero is not None:
+        caja_anual = a.detalle["cash_flow_anual"]
+        techo = None
+        if deuda <= liquidacion or datos.cuota_deuda is not None:
+            bajo, alto = .01, max(precio, alquiler * 12 * 60, 1)
+            while alto < 1e9 and calcular(alto).detalle["cash_flow_anual"] >= 0:
+                alto *= 2
+            if calcular(bajo).detalle["cash_flow_anual"] >= 0 > calcular(alto).detalle["cash_flow_anual"]:
+                for _ in range(50):
+                    medio = (bajo + alto) / 2
+                    if calcular(medio).detalle["cash_flow_anual"] >= 0:
+                        bajo = medio
+                    else:
+                        alto = medio
+                techo = int(bajo * 100) / 100
+        financiero["precio_maximo_cash_flow_cero"] = techo
+        retorno = {
+            "cash_flow_mensual": a.cash_flow_mensual,
+            "cash_flow_anual": caja_anual,
+            "rentabilidad_neta": a.rentabilidad_neta,
+            "retorno_caja_pct": round(caja_anual / a.capital_aportado, 4) if a.capital_aportado > 0 else None,
+            "alquiler_mensual": a.alquiler_mensual,
+            "origen_alquiler": "Introducido por el usuario" if datos.alquiler_mensual is not None else v.alquiler_ambito,
+            "ingresos_anuales_brutos": a.ingresos_anuales_brutos,
+            "perdida_vacancia": round(a.ingresos_anuales_brutos - a.ingresos_anuales_efectivos, 2),
+            "ingresos_anuales_efectivos": a.ingresos_anuales_efectivos,
+            "beneficio_neto_anual_antes_impuestos": a.beneficio_neto_anual_antes_impuestos,
+            "beneficio_neto_anual": a.beneficio_neto_anual,
+            "rentabilidad_bruta": a.rentabilidad_bruta,
+            "anios_recuperar_capital_caja": round(a.capital_aportado / caja_anual, 1)
+                                          if caja_anual > 0 and a.capital_aportado > 0 else None,
+            "precio_maximo_cash_flow_cero": techo,
+            "formulas": [
+                "Rentabilidad bruta = ingreso bruto anual ÷ inversión total.",
+                "Rentabilidad neta = beneficio anual tras IRPF y antes de cuotas ÷ inversión total.",
+                "Retorno de caja = flujo anual tras ambas cuotas ÷ capital propio inicial.",
+                "Recuperación simple = capital propio inicial ÷ flujo anual positivo. No proyecta cambios futuros.",
+            ],
+        }
 
     # Contexto del entorno: manda sobre la rentabilidad, porque una zona
     # tensionada limita por ley el alquiler que se puede cobrar.
@@ -404,19 +498,23 @@ def analizar_subasta(datos: AnalisisIn):
 
     # La pregunta del proyecto, respondida de frente y antes que nada.
     autofinanciacion = None
-    if v.alquiler_mensual:
+    compatible = not deuda and (referencia is None or referencia <= precio)
+    if alquiler and not compatible:
+        avisos.append("Las métricas avanzadas de inversor y autofinanciación quedan fuera de este escenario. "
+                      "Los apartados de gastos y retorno sí usan la deuda y la base fiscal introducidas.")
+    if alquiler and compatible:
         from autofinanciacion import analizar_autofinanciacion
         cp, cm = inmueble.get("codigo_ine_provincia"), inmueble.get("codigo_ine_municipio")
         autofinanciacion = analizar_autofinanciacion(
-            subasta.valor_subasta, v.alquiler_mensual,
+            precio, alquiler,
             inmueble.get("provincia") or subasta.provincia, supuestos,
             (str(cp).zfill(2) + str(cm).zfill(3)) if cp and cm else None,
         ).to_dict()
 
     metricas = None
-    if v.alquiler_mensual:
+    if alquiler and compatible:
         metricas = analizar_inversor(
-            subasta.valor_subasta, v.alquiler_mensual,
+            precio, alquiler,
             inmueble.get("provincia") or subasta.provincia, supuestos,
             renta_hogar_zona_anual=zona.renta_hogar_anual,
         ).to_dict()
@@ -430,6 +528,8 @@ def analizar_subasta(datos: AnalisisIn):
         entorno["coordenadas"] = {"lat": coords[0], "lon": coords[1]}
 
     return {
+        "gastos_inversion": gastos,
+        "ingresos_retorno": retorno,
         "se_paga_solo": autofinanciacion,
         "subasta": subasta.to_dict() | {"url": subasta.url},
         "inmueble": inmueble,
