@@ -36,19 +36,10 @@ const campos = {
   riesgo_max: ['Riesgo máximo (0–100)', 'Las puntuaciones más altas indican más señales de riesgo.'],
   incluir_cerradas: ['Incluir fichas vencidas', 'Incluye fichas aún listadas por el BOE cuyo plazo ya ha terminado.'],
   solo_analizables: ['Solo fichas analizables', 'Exige que la ficha publique valor de subasta y referencia catastral.'],
-  precio_adjudicacion: ['Precio previsto de adjudicación (€)', 'Importe que prevés pagar por el remate. Si lo dejas vacío, el estudio usa el valor publicado por el BOE.'],
-  valor_referencia_catastro: ['Valor de referencia del Catastro (€)', 'Valor fiscal certificado para el bien o derecho adquirido. Si falta, el ITP se marca como provisional.'],
-  deuda_asumida: ['Saldo de deuda asumida (€)', 'Saldo confirmado que quedará a tu cargo. Indica cero si has verificado que no asumes deuda. Vacío significa pendiente de verificar.'],
-  deuda_liquidada: ['Deuda que liquidarás al adquirir (€)', 'Parte del saldo anterior que pagarás al inicio. Se suma al efectivo inicial.'],
-  cuota_deuda: ['Cuota mensual de deuda pendiente (€)', 'Cuota de la deuda asumida tras el pago inicial. Indica cero si has confirmado que no hay cuota.'],
   identificador: ['Identificador BOE', 'Referencia con formato SUB-JA-2026-268716. Puedes copiarla de una ficha del BOE.'],
   alquiler_mensual: ['Alquiler mensual bruto (€)', 'Ingreso mensual de alquiler. En el análisis de subasta, vacíalo para dejar que la API lo estime.'],
   precio_compra: ['Precio de compra (€)', 'Importe de adquisición utilizado para calcular financiación, gastos y rentabilidad.'],
   anios_hipoteca: ['Plazo de hipoteca (años)', 'Número de años en los que se devuelve el préstamo.'],
-  usar_escenarios_reforma: ['Calcular tres escenarios de reforma', 'Usa todos los m² disponibles. El análisis principal toma la reforma parcial. Desactívalo para usar el presupuesto manual.'],
-  puesta_a_punto_m2: ['Puesta a punto (€/m²)', 'Pintura, suelos y reparaciones menores.'],
-  reforma_parcial_m2: ['Reforma parcial (€/m²)', 'Renovación de estancias y reparaciones puntuales de instalaciones.'],
-  reforma_integral_m2: ['Reforma integral (€/m²)', 'Renovación general de acabados e instalaciones.'],
   reforma: ['Presupuesto de reforma (€)', 'Inversión inicial prevista para preparar la vivienda.'],
   vacancia_pct: ['Vacancia (%)', 'Parte del año en la que se estima que la vivienda estará sin alquilar.'],
   irpf_marginal: ['IRPF marginal (%)', 'Tipo marginal empleado en la estimación fiscal del alquiler.'],
@@ -68,7 +59,7 @@ const ejemplos = {
   interes_anual:.032, anios:25, diferencial:.008, ciudad:'madrid', precio_max:99999.99,
   entrada_max:40000, riesgo_max:75, incluir_cerradas:false, solo_analizables:false,
   identificador:'SUB-JA-2026-268716', alquiler_mensual:750, precio_compra:85000,
-  usar_escenarios_reforma:true, anios_hipoteca:25, reforma:5000, vacancia_pct:.06, irpf_marginal:.30, comunidad_mensual:60,
+  anios_hipoteca:25, reforma:5000, vacancia_pct:.06, irpf_marginal:.30, comunidad_mensual:60,
   ibi_anual:400, municipio:'Madrid', anio_construccion:2000, codigo_municipio:'28079',
   codigo_distrito:'2807904', lat:40.3928, lon:-3.7274
 };
@@ -113,9 +104,6 @@ const tablasRadar = {
   provincias: ['nombre','codigo']
 };
 const indicadoresRadar = {
-  gastos_inversion: ['inversion_total','costes_adquisicion_total','capital_aportado','salidas_caja_mensuales','salidas_caja_anuales'],
-  ingresos_retorno: ['alquiler_mensual','ingresos_anuales_brutos','ingresos_mensuales_efectivos',
-    'ingresos_anuales_efectivos','cash_flow_mensual','cash_flow_anual','rentabilidad_neta','retorno_caja_pct'],
   analisis: ['cash_flow_mensual','rentabilidad_neta','capital_aportado','cuota_mensual','alquiler_mensual'],
   rentabilidad: ['cash_flow_mensual','rentabilidad_neta','capital_aportado','cuota_mensual','alquiler_mensual'],
   se_paga_solo: ['veredicto','cash_flow_mensual','entrada_minima_pct','capital_extra_necesario'],
@@ -144,22 +132,6 @@ const resumenRadar = {
 };
 
 const etiquetasRadar = {
-  reforma_estimacion:'Escenarios de reforma', base_reforma:'Base del presupuesto', tarifa_reforma_m2:'Coste de reforma por m²',
-  costes_adquisicion_total:'Total ITP, formalización y reforma',
-  salidas_caja_mensuales:'Salidas de caja totales al mes', salidas_caja_anuales:'Salidas de caja totales al año',
-  alquiler_mensual:'Alquiler bruto mensual', ingresos_anuales_brutos:'Ingresos brutos anuales',
-  ingresos_mensuales_efectivos:'Ingresos efectivos mensuales', ingresos_anuales_efectivos:'Ingresos efectivos anuales',
-  gastos_inversion:'Gastos e inversión inicial', ingresos_retorno:'Ingresos y retorno de la inversión',
-  deuda_asumida:'Deuda asumida', deuda_liquidada:'Deuda liquidada al adquirir', deuda_pendiente:'Saldo pendiente tras adquirir',
-  cuota_deuda:'Cuota mensual de la deuda asumida', retorno_caja_pct:'ROI de caja sobre el capital propio',
-  cash_flow_anual:'Flujo de caja anual', base_itp:'Base utilizada para estimar el ITP', itp_pct:'Tipo de ITP',
-  itp:'ITP estimado', deposito:'Depósito del BOE (fuera de los gastos)', hipoteca:'Importe de la nueva hipoteca',
-  cuota_mensual:'Cuota de la nueva hipoteca', entrada_euros:'Entrada para la compra', notaria:'Notaría y copias',
-  registro:'Registro de la Propiedad', gestoria:'Gestoría', origen_precio:'Origen del precio',
-  perdida_vacancia:'Alquiler perdido por vacancia', anios_recuperar_capital_caja:'Años para recuperar el capital con el flujo de caja',
-  formulas:'Cómo se calculan los retornos', gastos_anuales:'Gastos operativos anuales', irpf_estimado:'IRPF anual estimado',
-  ibi_anual:'IBI anual', comunidad_anual:'Comunidad anual', seguro_anual:'Seguro anual',
-  mantenimiento_anual:'Mantenimiento anual', gestion_anual:'Gestión anual del alquiler',
   direccion:'Dirección', tasacion:'Tasación', valor_subasta:'Valor de subasta', fecha_fin:'Fecha de cierre', identificador:'Ficha del BOE',
   cash_flow_mensual:'Flujo de caja mensual', capital_aportado:'Capital propio aportado',
   capital_necesario_estimado:'Capital inicial estimado', precio_maximo_cash_flow_cero:'Precio máximo con flujo de caja cero',
@@ -175,14 +147,14 @@ const monedaRadar = new Intl.NumberFormat('es-ES', {style:'currency',currency:'E
 const numeroRadar = new Intl.NumberFormat('es-ES', {maximumFractionDigits:2});
 const unidadPorcentaje = new Set(['rentabilidad_bruta','rentabilidad_neta','retorno_capital_aportado',
   'entrada_pct','entrada_pct_usada','entrada_minima_pct','interes_anual','euribor_12m','tipo_estimado',
-  'diferencial','retorno_caja_pct','ocupacion_minima_pct','itp_pct','vacancia_pct','irpf_marginal']);
+  'diferencial','ocupacion_minima_pct','itp_pct','vacancia_pct','irpf_marginal']);
 
 function tituloRadar(clave) {
   return etiquetasRadar[clave] || clave.replaceAll('_',' ').replace(/^./, letra => letra.toUpperCase());
 }
 
 function valorRadar(clave, valor) {
-  if (valor == null || valor === '') return clave === 'deuda_asumida' ? 'Pendiente de verificar' : 'Sin dato';
+  if (valor == null || valor === '') return 'Sin dato';
   if (typeof valor === 'boolean') return valor ? 'Sí' : 'No';
   if (clave === 'status' && valor === 'ok') return 'Operativa';
   if (['fecha_inicio','fecha_fin','fecha_dato'].includes(clave) && /^\d{4}-\d{2}-\d{2}/.test(valor)) {
@@ -195,8 +167,8 @@ function valorRadar(clave, valor) {
   if (clave.endsWith('_pp')) return numeroRadar.format(valor) + ' pp';
   if (/^(anio|año)/.test(clave) && /^(anio|anio_construccion|alquiler_anio)$/.test(clave)) return String(valor);
   if (/superficie/.test(clave)) return numeroRadar.format(valor) + ' m²';
-  if (/precio_m2|alquiler_m2|tarifa_reforma_m2/.test(clave)) return monedaRadar.format(valor) + '/m²';
-  if (/^(costes_adquisicion_total|salidas_caja_|deuda_|cuota_deuda|base_itp|valor_referencia_catastro|entrada_euros|notaria$|registro$|gestoria$|ibi_anual|comunidad_anual|seguro_anual|mantenimiento_anual|gestion_anual|perdida_vacancia|precio_|valor_subasta|valor_mercado|tasacion|deposito|cash_flow|cuota_|capital_|alquiler_mensual|renta_hogar|inversion_total|hipoteca$|entrada_minima_euros|gastos_|ingresos_|beneficio_|irpf_estimado|itp$|reforma$)/.test(clave)) return monedaRadar.format(valor);
+  if (/precio_m2|alquiler_m2/.test(clave)) return monedaRadar.format(valor) + '/m²';
+  if (/^(precio_|valor_subasta|valor_mercado|tasacion|deposito|cash_flow|cuota_|capital_|alquiler_mensual|renta_hogar|inversion_total|hipoteca$|entrada_minima_euros|gastos_|ingresos_|beneficio_|irpf_estimado|itp$|reforma$)/.test(clave)) return monedaRadar.format(valor);
   return numeroRadar.format(valor);
 }
 
@@ -212,7 +184,7 @@ function lecturaRadar(clave, valor) {
     }
   }
   const salida = elemento('span', valorRadar(clave, valor));
-  if (['cash_flow_mensual','cash_flow_anual','retorno_caja_pct'].includes(clave) && typeof valor === 'number') salida.className = valor < 0 ? 'saldo-negativo' : 'saldo-positivo';
+  if (clave === 'cash_flow_mensual' && typeof valor === 'number') salida.className = valor < 0 ? 'saldo-negativo' : 'saldo-positivo';
   return salida;
 }
 
@@ -286,15 +258,7 @@ function contenidoRadar(clave, valor) {
   return lecturaRadar(clave, valor);
 }
 
-function acordeonRadar(titulo, contenido) {
-  const seccion = elemento('details');
-  seccion.className = 'bloque-radar acordeon-radar';
-  seccion.open = true;
-  seccion.append(elemento('summary', titulo), contenido);
-  return seccion;
-}
-
-function bloqueRadar(datos, destacados = [], agruparIndicadores = false) {
+function bloqueRadar(datos, destacados = []) {
   const bloque = elemento('div');
   const lista = elemento('dl');
   lista.className = 'indicadores-radar';
@@ -308,8 +272,7 @@ function bloqueRadar(datos, destacados = [], agruparIndicadores = false) {
     tarjeta.lastChild.append(contenidoRadar(clave,datos[clave]));
     lista.append(tarjeta);
   }
-  const resumen = elemento('div');
-  if (claves.length) resumen.append(lista);
+  if (claves.length) bloque.append(lista);
   const resto = entradas.filter(([c,v]) => !claves.includes(c) && (!escalar(v) || v != null));
   const escalares = resto.filter(([,v]) => escalar(v));
   if (escalares.length) {
@@ -320,13 +283,13 @@ function bloqueRadar(datos, destacados = [], agruparIndicadores = false) {
       dd.append(lecturaRadar(clave,valor));
       ficha.append(elemento('dt',tituloRadar(clave)),dd);
     }
-    resumen.append(ficha);
-  }
-  if (resumen.childElementCount) {
-    bloque.append(agruparIndicadores ? acordeonRadar('Indicadores de la consulta', resumen) : resumen);
+    bloque.append(ficha);
   }
   for (const [clave, valor] of resto.filter(([,v]) => !escalar(v))) {
-    bloque.append(acordeonRadar(tituloRadar(clave), contenidoRadar(clave, valor)));
+    const seccion = elemento('section');
+    seccion.className = 'bloque-radar';
+    seccion.append(elemento('h3',tituloRadar(clave)),contenidoRadar(clave,valor));
+    bloque.append(seccion);
   }
   return bloque;
 }
@@ -359,105 +322,6 @@ function datosCsvRadar(texto) {
     return [c, v && !/codigo|ine/.test(c) && /^-?\d+(?:\.\d+)?$/.test(v) ? Number(v) : v];
   })));
   return {total:municipios.length,municipios,notas};
-}
-
-function resumenBanco(subasta, gastos, retorno, prudente, reforma) {
-  const resumen = elemento('div');
-  const seccion = acordeonRadar('Resumen para el banco', resumen);
-  seccion.classList.add('resumen-banco');
-  const boton = elemento('button','Imprimir o guardar PDF');
-  boton.type = 'button';
-  boton.addEventListener('click', () => {
-    document.body.classList.add('imprimir-banco');
-    try {
-      window.print();
-    } finally {
-      document.body.classList.remove('imprimir-banco');
-    }
-  });
-  resumen.append(boton);
-  const ficha = elemento('p');
-  ficha.append(lecturaRadar('identificador',subasta.identificador));
-  const ubicacion = [subasta.direccion,subasta.localidad,subasta.provincia].filter(Boolean);
-  if (ubicacion.length) ficha.append(' · ' + [...new Set(ubicacion)].join(', '));
-  resumen.append(ficha);
-
-  const pendientes = [];
-  if (gastos.deuda_asumida == null) pendientes.push('saldo de deuda asumida');
-  if (gastos.deuda_pendiente > 0 && gastos.cuota_deuda == null) pendientes.push('cuota de la deuda asumida');
-  if (gastos.valor_referencia_catastro == null) pendientes.push('valor de referencia del Catastro');
-  if (pendientes.length) {
-    resumen.append(elemento('p','Estimación provisional. Pendiente de verificar: ' + pendientes.join(', ') + '.'));
-  }
-
-  if (retorno && prudente) {
-    const lectura = retorno.cash_flow_anual < 0
-      ? 'El escenario base requiere una aportación para cubrir gastos y cuotas.'
-      : prudente.cash_flow_anual < 0
-        ? 'El alquiler cubre gastos y cuotas en el escenario base. Con una renta inferior haría falta aportar efectivo.'
-        : 'El alquiler cubre gastos y cuotas en los dos escenarios.';
-    resumen.append(elemento('p',lectura + ' Flujo mensual estimado: ' +
-      monedaRadar.format(retorno.cash_flow_mensual) + ' en el escenario base y ' +
-      monedaRadar.format(prudente.cash_flow_mensual) + ' en el prudente.'));
-  } else {
-    resumen.append(elemento('p','Falta una estimación de alquiler para valorar la cobertura de gastos y cuotas.'));
-  }
-
-  const inversion = ['precio_compra','origen_precio','inversion_total','capital_aportado','hipoteca',
-    'cuota_mensual','deuda_asumida','deuda_liquidada','deuda_pendiente','cuota_deuda'];
-  const detalle = elemento('dl');
-  detalle.className = 'banco-datos';
-  function dato(clave, valor) {
-    const dd = elemento('dd');
-    dd.append(lecturaRadar(clave,valor));
-    detalle.append(elemento('dt',tituloRadar(clave)),dd);
-  }
-  for (const clave of inversion) dato(clave,gastos[clave]);
-  if (retorno) {
-    dato('origen_alquiler',retorno.origen_alquiler);
-    dato('retorno_caja_pct',retorno.retorno_caja_pct);
-    dato('precio_maximo_cash_flow_cero',retorno.precio_maximo_cash_flow_cero);
-  }
-  resumen.append(detalle);
-  if (reforma) {
-    const [ , parcial, integral] = reforma.escenarios;
-    const extra = integral.capital_aportado - parcial.capital_aportado;
-    resumen.append(elemento('p','Reforma parcial incluida: ' + monedaRadar.format(parcial.reforma) +
-      '. Capital adicional en reforma integral: ' + monedaRadar.format(extra) + '. ' + reforma.base_reforma + '.'));
-  }
-
-  if (retorno && prudente) {
-    const contenedor = elemento('div');
-    contenedor.className = 'table';
-    const tabla = elemento('table');
-    const encabezado = tabla.createTHead().insertRow();
-    const reduccion = numeroRadar.format(prudente.reduccion_alquiler * 100);
-    for (const titulo of ['Concepto','Base / mes','Base / año',
-      '−' + reduccion + ' % renta / mes','−' + reduccion + ' % renta / año']) {
-      const th = elemento('th',titulo);
-      th.scope = 'col';
-      encabezado.append(th);
-    }
-    const cuerpo = tabla.createTBody();
-    for (const [titulo, mensual, anual] of [
-      ['Alquiler bruto','alquiler_mensual','ingresos_anuales_brutos'],
-      ['Ingresos efectivos','ingresos_mensuales_efectivos','ingresos_anuales_efectivos'],
-      ['Salidas de caja','salidas_caja_mensuales','salidas_caja_anuales'],
-      ['Flujo de caja','cash_flow_mensual','cash_flow_anual']
-    ]) {
-      const fila = cuerpo.insertRow();
-      const th = elemento('th',titulo);
-      th.scope = 'row';
-      fila.append(th);
-      for (const escenario of [retorno,prudente]) {
-        for (const clave of [mensual,anual]) fila.insertCell().append(lecturaRadar(clave,escenario[clave]));
-      }
-    }
-    contenedor.append(tabla);
-    resumen.append(contenedor);
-  }
-  resumen.append(elemento('p','Los ingresos efectivos descuentan la vacancia. Las salidas incluyen gastos operativos, IRPF estimado y ambas cuotas. Estudio económico del inmueble basado en los supuestos indicados.'));
-  return seccion;
 }
 
 function montarPanel(spec) {
@@ -574,7 +438,6 @@ function montarPanel(spec) {
     dashboard.hidden = true;
     const datosOriginales = elemento('details');
     datosOriginales.hidden = true;
-    datosOriginales.className = 'acordeon-radar';
     const resumenOriginal = elemento('summary','Ver JSON original');
     const resultado = elemento('pre');
     datosOriginales.append(resumenOriginal, resultado);
@@ -615,27 +478,7 @@ function montarPanel(spec) {
           descargar.hidden = false;
         }
         if (respuesta.ok && datos && typeof datos === 'object') {
-          if (path === '/subastas/analizar') {
-            const {gastos_inversion, ingresos_retorno, escenario_prudente, reforma_estimacion, rentabilidad, ...resto} = datos;
-            if (gastos_inversion && resto.subasta) {
-              dashboard.append(resumenBanco(resto.subasta,gastos_inversion,ingresos_retorno,escenario_prudente,reforma_estimacion));
-            }
-            if (gastos_inversion && (gastos_inversion.deuda_asumida == null ||
-                gastos_inversion.deuda_pendiente > 0 && gastos_inversion.cuota_deuda == null ||
-                gastos_inversion.valor_referencia_catastro == null)) {
-              const avisoProvisional = elemento('p','Estimación provisional. Revisa los avisos de gastos e inversión.');
-              avisoProvisional.className = 'note';
-              dashboard.append(avisoProvisional);
-            }
-            dashboard.append(bloqueRadar({
-              reforma_estimacion,
-              gastos_inversion,
-              ingresos_retorno: ingresos_retorno || {aviso:'Sin estimación de alquiler para calcular el retorno.'},
-              ...resto
-            }));
-          } else {
-            dashboard.append(bloqueRadar(datos, resumenRadar[path], true));
-          }
+          dashboard.append(bloqueRadar(datos, resumenRadar[path]));
           dashboard.hidden = false;
         }
         resumenOriginal.textContent = tipo.includes('json') ? 'Ver JSON original' : 'Ver respuesta original';
