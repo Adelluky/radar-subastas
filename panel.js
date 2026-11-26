@@ -286,7 +286,15 @@ function contenidoRadar(clave, valor) {
   return lecturaRadar(clave, valor);
 }
 
-function bloqueRadar(datos, destacados = []) {
+function acordeonRadar(titulo, contenido) {
+  const seccion = elemento('details');
+  seccion.className = 'bloque-radar acordeon-radar';
+  seccion.open = true;
+  seccion.append(elemento('summary', titulo), contenido);
+  return seccion;
+}
+
+function bloqueRadar(datos, destacados = [], agruparIndicadores = false) {
   const bloque = elemento('div');
   const lista = elemento('dl');
   lista.className = 'indicadores-radar';
@@ -300,7 +308,8 @@ function bloqueRadar(datos, destacados = []) {
     tarjeta.lastChild.append(contenidoRadar(clave,datos[clave]));
     lista.append(tarjeta);
   }
-  if (claves.length) bloque.append(lista);
+  const resumen = elemento('div');
+  if (claves.length) resumen.append(lista);
   const resto = entradas.filter(([c,v]) => !claves.includes(c) && (!escalar(v) || v != null));
   const escalares = resto.filter(([,v]) => escalar(v));
   if (escalares.length) {
@@ -311,13 +320,13 @@ function bloqueRadar(datos, destacados = []) {
       dd.append(lecturaRadar(clave,valor));
       ficha.append(elemento('dt',tituloRadar(clave)),dd);
     }
-    bloque.append(ficha);
+    resumen.append(ficha);
+  }
+  if (resumen.childElementCount) {
+    bloque.append(agruparIndicadores ? acordeonRadar('Indicadores de la consulta', resumen) : resumen);
   }
   for (const [clave, valor] of resto.filter(([,v]) => !escalar(v))) {
-    const seccion = elemento('section');
-    seccion.className = 'bloque-radar';
-    seccion.append(elemento('h3',tituloRadar(clave)),contenidoRadar(clave,valor));
-    bloque.append(seccion);
+    bloque.append(acordeonRadar(tituloRadar(clave), contenidoRadar(clave, valor)));
   }
   return bloque;
 }
@@ -353,8 +362,9 @@ function datosCsvRadar(texto) {
 }
 
 function resumenBanco(subasta, gastos, retorno, prudente, reforma) {
-  const resumen = elemento('section');
-  resumen.className = 'resumen-banco bloque-radar';
+  const resumen = elemento('div');
+  const seccion = acordeonRadar('Resumen para el banco', resumen);
+  seccion.classList.add('resumen-banco');
   const boton = elemento('button','Imprimir o guardar PDF');
   boton.type = 'button';
   boton.addEventListener('click', () => {
@@ -365,7 +375,7 @@ function resumenBanco(subasta, gastos, retorno, prudente, reforma) {
       document.body.classList.remove('imprimir-banco');
     }
   });
-  resumen.append(elemento('h3','Resumen para el banco'), boton);
+  resumen.append(boton);
   const ficha = elemento('p');
   ficha.append(lecturaRadar('identificador',subasta.identificador));
   const ubicacion = [subasta.direccion,subasta.localidad,subasta.provincia].filter(Boolean);
@@ -447,7 +457,7 @@ function resumenBanco(subasta, gastos, retorno, prudente, reforma) {
     resumen.append(contenedor);
   }
   resumen.append(elemento('p','Los ingresos efectivos descuentan la vacancia. Las salidas incluyen gastos operativos, IRPF estimado y ambas cuotas. Estudio económico del inmueble basado en los supuestos indicados.'));
-  return resumen;
+  return seccion;
 }
 
 function montarPanel(spec) {
@@ -564,6 +574,7 @@ function montarPanel(spec) {
     dashboard.hidden = true;
     const datosOriginales = elemento('details');
     datosOriginales.hidden = true;
+    datosOriginales.className = 'acordeon-radar';
     const resumenOriginal = elemento('summary','Ver JSON original');
     const resultado = elemento('pre');
     datosOriginales.append(resumenOriginal, resultado);
@@ -623,7 +634,7 @@ function montarPanel(spec) {
               ...resto
             }));
           } else {
-            dashboard.append(bloqueRadar(datos, resumenRadar[path]));
+            dashboard.append(bloqueRadar(datos, resumenRadar[path], true));
           }
           dashboard.hidden = false;
         }
