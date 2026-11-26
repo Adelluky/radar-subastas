@@ -45,6 +45,10 @@ const campos = {
   alquiler_mensual: ['Alquiler mensual bruto (€)', 'Ingreso mensual de alquiler. En el análisis de subasta, vacíalo para dejar que la API lo estime.'],
   precio_compra: ['Precio de compra (€)', 'Importe de adquisición utilizado para calcular financiación, gastos y rentabilidad.'],
   anios_hipoteca: ['Plazo de hipoteca (años)', 'Número de años en los que se devuelve el préstamo.'],
+  usar_escenarios_reforma: ['Calcular tres escenarios de reforma', 'Usa todos los m² disponibles. El análisis principal toma la reforma parcial. Desactívalo para usar el presupuesto manual.'],
+  puesta_a_punto_m2: ['Puesta a punto (€/m²)', 'Pintura, suelos y reparaciones menores.'],
+  reforma_parcial_m2: ['Reforma parcial (€/m²)', 'Renovación de estancias y reparaciones puntuales de instalaciones.'],
+  reforma_integral_m2: ['Reforma integral (€/m²)', 'Renovación general de acabados e instalaciones.'],
   reforma: ['Presupuesto de reforma (€)', 'Inversión inicial prevista para preparar la vivienda.'],
   vacancia_pct: ['Vacancia (%)', 'Parte del año en la que se estima que la vivienda estará sin alquilar.'],
   irpf_marginal: ['IRPF marginal (%)', 'Tipo marginal empleado en la estimación fiscal del alquiler.'],
@@ -64,7 +68,7 @@ const ejemplos = {
   interes_anual:.032, anios:25, diferencial:.008, ciudad:'madrid', precio_max:99999.99,
   entrada_max:40000, riesgo_max:75, incluir_cerradas:false, solo_analizables:false,
   identificador:'SUB-JA-2026-268716', alquiler_mensual:750, precio_compra:85000,
-  anios_hipoteca:25, reforma:5000, vacancia_pct:.06, irpf_marginal:.30, comunidad_mensual:60,
+  usar_escenarios_reforma:true, anios_hipoteca:25, reforma:5000, vacancia_pct:.06, irpf_marginal:.30, comunidad_mensual:60,
   ibi_anual:400, municipio:'Madrid', anio_construccion:2000, codigo_municipio:'28079',
   codigo_distrito:'2807904', lat:40.3928, lon:-3.7274
 };
@@ -140,6 +144,7 @@ const resumenRadar = {
 };
 
 const etiquetasRadar = {
+  reforma_estimacion:'Escenarios de reforma', base_reforma:'Base del presupuesto', tarifa_reforma_m2:'Coste de reforma por m²',
   costes_adquisicion_total:'Total ITP, formalización y reforma',
   salidas_caja_mensuales:'Salidas de caja totales al mes', salidas_caja_anuales:'Salidas de caja totales al año',
   alquiler_mensual:'Alquiler bruto mensual', ingresos_anuales_brutos:'Ingresos brutos anuales',
@@ -190,7 +195,7 @@ function valorRadar(clave, valor) {
   if (clave.endsWith('_pp')) return numeroRadar.format(valor) + ' pp';
   if (/^(anio|año)/.test(clave) && /^(anio|anio_construccion|alquiler_anio)$/.test(clave)) return String(valor);
   if (/superficie/.test(clave)) return numeroRadar.format(valor) + ' m²';
-  if (/precio_m2|alquiler_m2/.test(clave)) return monedaRadar.format(valor) + '/m²';
+  if (/precio_m2|alquiler_m2|tarifa_reforma_m2/.test(clave)) return monedaRadar.format(valor) + '/m²';
   if (/^(costes_adquisicion_total|salidas_caja_|deuda_|cuota_deuda|base_itp|valor_referencia_catastro|entrada_euros|notaria$|registro$|gestoria$|ibi_anual|comunidad_anual|seguro_anual|mantenimiento_anual|gestion_anual|perdida_vacancia|precio_|valor_subasta|valor_mercado|tasacion|deposito|cash_flow|cuota_|capital_|alquiler_mensual|renta_hogar|inversion_total|hipoteca$|entrada_minima_euros|gastos_|ingresos_|beneficio_|irpf_estimado|itp$|reforma$)/.test(clave)) return monedaRadar.format(valor);
   return numeroRadar.format(valor);
 }
@@ -347,7 +352,7 @@ function datosCsvRadar(texto) {
   return {total:municipios.length,municipios,notas};
 }
 
-function resumenBanco(subasta, gastos, retorno, prudente) {
+function resumenBanco(subasta, gastos, retorno, prudente, reforma) {
   const resumen = elemento('section');
   resumen.className = 'resumen-banco bloque-radar';
   const boton = elemento('button','Imprimir o guardar PDF');
@@ -404,6 +409,12 @@ function resumenBanco(subasta, gastos, retorno, prudente) {
     dato('precio_maximo_cash_flow_cero',retorno.precio_maximo_cash_flow_cero);
   }
   resumen.append(detalle);
+  if (reforma) {
+    const [ , parcial, integral] = reforma.escenarios;
+    const extra = integral.capital_aportado - parcial.capital_aportado;
+    resumen.append(elemento('p','Reforma parcial incluida: ' + monedaRadar.format(parcial.reforma) +
+      '. Capital adicional en reforma integral: ' + monedaRadar.format(extra) + '. ' + reforma.base_reforma + '.'));
+  }
 
   if (retorno && prudente) {
     const contenedor = elemento('div');
@@ -594,9 +605,9 @@ function montarPanel(spec) {
         }
         if (respuesta.ok && datos && typeof datos === 'object') {
           if (path === '/subastas/analizar') {
-            const {gastos_inversion, ingresos_retorno, escenario_prudente, rentabilidad, ...resto} = datos;
+            const {gastos_inversion, ingresos_retorno, escenario_prudente, reforma_estimacion, rentabilidad, ...resto} = datos;
             if (gastos_inversion && resto.subasta) {
-              dashboard.append(resumenBanco(resto.subasta,gastos_inversion,ingresos_retorno,escenario_prudente));
+              dashboard.append(resumenBanco(resto.subasta,gastos_inversion,ingresos_retorno,escenario_prudente,reforma_estimacion));
             }
             if (gastos_inversion && (gastos_inversion.deuda_asumida == null ||
                 gastos_inversion.deuda_pendiente > 0 && gastos_inversion.cuota_deuda == null ||
@@ -606,6 +617,7 @@ function montarPanel(spec) {
               dashboard.append(avisoProvisional);
             }
             dashboard.append(bloqueRadar({
+              reforma_estimacion,
               gastos_inversion,
               ingresos_retorno: ingresos_retorno || {aviso:'Sin estimación de alquiler para calcular el retorno.'},
               ...resto

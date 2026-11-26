@@ -14,6 +14,7 @@ Puerto 8010.
 from __future__ import annotations
 
 import os
+from dataclasses import replace
 from html import escape
 from pathlib import Path
 from typing import Optional
@@ -66,6 +67,10 @@ class AnalisisIn(BaseModel):
     deuda_asumida: float | None = Field(None, ge=0)
     deuda_liquidada: float = Field(0, ge=0)
     cuota_deuda: float | None = Field(None, ge=0)
+    usar_escenarios_reforma: bool = False
+    puesta_a_punto_m2: float = Field(60, ge=0, allow_inf_nan=False)
+    reforma_parcial_m2: float = Field(200, ge=0, allow_inf_nan=False)
+    reforma_integral_m2: float = Field(750, ge=0, allow_inf_nan=False)
     supuestos: Optional[SupuestosIn] = None
 
 
@@ -405,12 +410,37 @@ def analizar_subasta(datos: AnalisisIn):
     if alquiler is None:
         avisos.append("Sin alquiler disponible. Solo se presenta la inversión y los gastos fijos conocidos.")
 
-    def calcular(importe, renta):
-        return analizar(importe, renta, provincia, supuestos,
+    superficie = inmueble.get("superficie_m2")
+    superficie = superficie if superficie and superficie > 0 else None
+    escenarios_reforma = None
+    if datos.usar_escenarios_reforma:
+        tarifas = (datos.puesta_a_punto_m2, datos.reforma_parcial_m2, datos.reforma_integral_m2)
+        if tarifas != tuple(sorted(tarifas)):
+            raise HTTPException(422, "Los costes por m² deben ir de menor a mayor.")
+        escenarios_reforma = []
+        for nombre, tarifa, fijo in zip(("Puesta a punto", "Reforma parcial", "Reforma integral"),
+                                       tarifas, (15000, 20000, 30000)):
+            presupuesto = round(superficie * tarifa, 2) if superficie is not None else fijo
+            escenarios_reforma.append({
+                "nombre": nombre, "reforma": presupuesto, "tarifa_reforma_m2": tarifa if superficie else None,
+            })
+        supuestos = replace(supuestos, reforma=escenarios_reforma[1]["reforma"])
+        if superficie is None:
+            avisos.append("Sin superficie disponible. Reforma estimada con los importes provisionales de 15.000 €, 20.000 € y 30.000 €.")
+
+    def calcular(importe, renta, supuestos_calculo=supuestos):
+        return analizar(importe, renta, provincia, supuestos_calculo,
                         base_itp=max(importe, referencia or 0), deuda_asumida=deuda,
                         deuda_liquidada=liquidacion, cuota_deuda=cuota_deuda)
 
     a = calcular(precio, alquiler or 0)
+    for escenario in escenarios_reforma or []:
+        resultado = calcular(precio, alquiler or 0, replace(supuestos, reforma=escenario["reforma"]))
+        escenario.update(inversion_total=resultado.inversion_total, capital_aportado=resultado.capital_aportado)
+        if alquiler is not None:
+            caja = resultado.detalle["cash_flow_anual"]
+            escenario["cash_flow_mensual"] = resultado.cash_flow_mensual
+            escenario["retorno_caja_pct"] = round(caja / resultado.capital_aportado, 4) if resultado.capital_aportado > 0 else None
     formalizacion = a.detalle["gastos_formalizacion"]
     gastos = {
         "inversion_total": a.inversion_total,
@@ -550,6 +580,11 @@ def analizar_subasta(datos: AnalisisIn):
 
     return {
         "gastos_inversion": gastos,
+        "reforma_estimacion": {
+            "superficie_tipo": superficie,
+            "base_reforma": "Superficie completa del Catastro" if superficie else "Importes fijos provisionales por falta de superficie",
+            "escenarios": escenarios_reforma,
+        } if escenarios_reforma is not None else None,
         "escenario_prudente": escenario_prudente,
         "ingresos_retorno": retorno,
         "se_paga_solo": autofinanciacion,
