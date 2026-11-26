@@ -415,6 +415,9 @@ def analizar_subasta(datos: AnalisisIn):
     gastos = {
         "inversion_total": a.inversion_total,
         "capital_aportado": a.capital_aportado,
+        "costes_adquisicion_total": round(a.itp + a.otros_gastos_compra + a.reforma, 2),
+        "salidas_caja_mensuales": a.detalle["salidas_caja_mensuales"] if alquiler is not None else None,
+        "salidas_caja_anuales": a.detalle["salidas_caja_anuales"] if alquiler is not None else None,
         "precio_compra": a.precio_compra,
         "origen_precio": "Adjudicación prevista" if datos.precio_adjudicacion else "Valor publicado por el BOE",
         "deuda_asumida": datos.deuda_asumida,
@@ -470,6 +473,9 @@ def analizar_subasta(datos: AnalisisIn):
             "alquiler_mensual": a.alquiler_mensual,
             "origen_alquiler": "Introducido por el usuario" if datos.alquiler_mensual is not None else v.alquiler_ambito,
             "ingresos_anuales_brutos": a.ingresos_anuales_brutos,
+            "ingresos_mensuales_efectivos": a.detalle["ingresos_mensuales_efectivos"],
+            "salidas_caja_mensuales": gastos["salidas_caja_mensuales"],
+            "salidas_caja_anuales": gastos["salidas_caja_anuales"],
             "perdida_vacancia": round(a.ingresos_anuales_brutos - a.ingresos_anuales_efectivos, 2),
             "ingresos_anuales_efectivos": a.ingresos_anuales_efectivos,
             "beneficio_neto_anual_antes_impuestos": a.beneficio_neto_anual_antes_impuestos,
@@ -481,6 +487,7 @@ def analizar_subasta(datos: AnalisisIn):
             "formulas": [
                 "Rentabilidad bruta = ingreso bruto anual ÷ inversión total.",
                 "Rentabilidad neta = beneficio anual tras IRPF y antes de cuotas ÷ inversión total.",
+                "Flujo de caja = ingresos efectivos menos gastos operativos, IRPF y ambas cuotas.",
                 "Retorno de caja = flujo anual tras ambas cuotas ÷ capital propio inicial.",
                 "Recuperación simple = capital propio inicial ÷ flujo anual positivo. No proyecta cambios futuros.",
             ],

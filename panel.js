@@ -109,8 +109,9 @@ const tablasRadar = {
   provincias: ['nombre','codigo']
 };
 const indicadoresRadar = {
-  gastos_inversion: ['inversion_total','capital_aportado','deuda_asumida','itp'],
-  ingresos_retorno: ['cash_flow_mensual','cash_flow_anual','rentabilidad_neta','retorno_caja_pct'],
+  gastos_inversion: ['inversion_total','costes_adquisicion_total','capital_aportado','salidas_caja_mensuales','salidas_caja_anuales'],
+  ingresos_retorno: ['alquiler_mensual','ingresos_anuales_brutos','ingresos_mensuales_efectivos',
+    'ingresos_anuales_efectivos','cash_flow_mensual','cash_flow_anual','rentabilidad_neta','retorno_caja_pct'],
   analisis: ['cash_flow_mensual','rentabilidad_neta','capital_aportado','cuota_mensual','alquiler_mensual'],
   rentabilidad: ['cash_flow_mensual','rentabilidad_neta','capital_aportado','cuota_mensual','alquiler_mensual'],
   se_paga_solo: ['veredicto','cash_flow_mensual','entrada_minima_pct','capital_extra_necesario'],
@@ -139,6 +140,10 @@ const resumenRadar = {
 };
 
 const etiquetasRadar = {
+  costes_adquisicion_total:'Total ITP, formalización y reforma',
+  salidas_caja_mensuales:'Salidas de caja totales al mes', salidas_caja_anuales:'Salidas de caja totales al año',
+  alquiler_mensual:'Alquiler bruto mensual', ingresos_anuales_brutos:'Ingresos brutos anuales',
+  ingresos_mensuales_efectivos:'Ingresos efectivos mensuales', ingresos_anuales_efectivos:'Ingresos efectivos anuales',
   gastos_inversion:'Gastos e inversión inicial', ingresos_retorno:'Ingresos y retorno de la inversión',
   deuda_asumida:'Deuda asumida', deuda_liquidada:'Deuda liquidada al adquirir', deuda_pendiente:'Saldo pendiente tras adquirir',
   cuota_deuda:'Cuota mensual de la deuda asumida', retorno_caja_pct:'ROI de caja sobre el capital propio',
@@ -186,7 +191,7 @@ function valorRadar(clave, valor) {
   if (/^(anio|año)/.test(clave) && /^(anio|anio_construccion|alquiler_anio)$/.test(clave)) return String(valor);
   if (/superficie/.test(clave)) return numeroRadar.format(valor) + ' m²';
   if (/precio_m2|alquiler_m2/.test(clave)) return monedaRadar.format(valor) + '/m²';
-  if (/^(deuda_|cuota_deuda|base_itp|valor_referencia_catastro|entrada_euros|notaria$|registro$|gestoria$|ibi_anual|comunidad_anual|seguro_anual|mantenimiento_anual|gestion_anual|perdida_vacancia|precio_|valor_subasta|valor_mercado|tasacion|deposito|cash_flow|cuota_|capital_|alquiler_mensual|renta_hogar|inversion_total|hipoteca$|entrada_minima_euros|gastos_|ingresos_|beneficio_|irpf_estimado|itp$|reforma$)/.test(clave)) return monedaRadar.format(valor);
+  if (/^(costes_adquisicion_total|salidas_caja_|deuda_|cuota_deuda|base_itp|valor_referencia_catastro|entrada_euros|notaria$|registro$|gestoria$|ibi_anual|comunidad_anual|seguro_anual|mantenimiento_anual|gestion_anual|perdida_vacancia|precio_|valor_subasta|valor_mercado|tasacion|deposito|cash_flow|cuota_|capital_|alquiler_mensual|renta_hogar|inversion_total|hipoteca$|entrada_minima_euros|gastos_|ingresos_|beneficio_|irpf_estimado|itp$|reforma$)/.test(clave)) return monedaRadar.format(valor);
   return numeroRadar.format(valor);
 }
 

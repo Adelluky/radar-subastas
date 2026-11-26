@@ -170,7 +170,8 @@ def analizar(precio_compra: float, alquiler_mensual: float, provincia: str | Non
 
     neto_antes_impuestos = ingresos_efectivos - gastos
     neto = neto_antes_impuestos - irpf
-    cash_flow_mensual = (ingresos_efectivos - gastos - irpf) / 12 - cuota - cuota_deuda
+    salidas_caja_anuales = gastos + irpf + 12 * (cuota + cuota_deuda)
+    cash_flow_mensual = (ingresos_efectivos - salidas_caja_anuales) / 12
 
     rent_bruta = ingresos_brutos / inversion_total
     rent_neta = neto / inversion_total
@@ -201,6 +202,9 @@ def analizar(precio_compra: float, alquiler_mensual: float, provincia: str | Non
         anios_recuperar_capital=round(anios_recuperar, 1) if anios_recuperar else None,
         detalle={
             "vacancia_aplicada_pct": s.vacancia_pct,
+            "salidas_caja_anuales": round(salidas_caja_anuales, 2),
+            "salidas_caja_mensuales": round(salidas_caja_anuales / 12, 2),
+            "ingresos_mensuales_efectivos": round(ingresos_efectivos / 12, 2),
             "cash_flow_anual": round(cash_flow_mensual * 12, 2),
             "meses_vacio_equivalente": round(s.vacancia_pct * 12, 1),
             "intereses_primer_anio": round(intereses_primer_anio, 2),
