@@ -5,63 +5,172 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Radar de Subastas</title>
 <style>
-:root{font:16px/1.5 system-ui,sans-serif;color:#182d2a;background:#f3f6f3;--accent:#21594b;--line:#dce6df}
-*{box-sizing:border-box}
-body{margin:0}
-main{max-width:1240px;margin:auto;padding:36px 24px 64px}
-header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px}
-h1,h2,p{margin:0}
-h1{font-size:clamp(1.65rem,4vw,2.5rem);letter-spacing:-.045em}
-h2{font-size:1.15rem}
-a{color:var(--accent)}
-form,.results{background:white;border:1px solid var(--line);border-radius:14px;padding:22px;margin-bottom:18px}
-.filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:14px 18px;margin:14px 0 18px}
-label{display:grid;gap:5px;font-size:.9rem;font-weight:650}
-input,select,button{font:inherit;border-radius:8px;min-height:43px}
-input,select{width:100%;border:1px solid #b7c9c0;background:#fbfdfb;color:inherit;padding:7px 9px}
-button{background:var(--accent);color:white;border:0;padding:8px 22px;font-weight:650;cursor:pointer}
-button:disabled{opacity:.65;cursor:wait}
-.note,#status,small{color:#526661;font-size:.86rem}
-.note{margin-top:10px}
-#status{margin:6px 0 12px}
-.table{overflow:auto}
-table{border-collapse:collapse;width:100%;font-size:.9rem;text-align:left}
-th,td{padding:10px;border-bottom:1px solid var(--line);vertical-align:top}
-th{background:#edf4ef;white-space:nowrap}
-td:not(:first-child){white-space:nowrap}
-td:first-child{min-width:185px}
-small{display:block}
-nav{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 18px}
-nav button{background:white;border:1px solid var(--line);color:var(--accent);padding:5px 11px;font-size:.84rem}
-nav button[aria-selected=true]{background:var(--accent);color:#fff}
-fieldset{border:1px solid var(--line);border-radius:8px;margin:12px 0;padding:0 14px}
-legend label{display:flex;align-items:center;gap:8px}
-legend input[type=checkbox]{width:auto;min-height:auto;margin:0}
-label small{font-weight:400}
-pre{background:#edf4ef;padding:14px;border-radius:8px;max-height:60vh;overflow:auto}
-.dashboard-radar{margin:16px 0}
-.indicadores-radar{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,175px),1fr));gap:10px;margin:10px 0}
-.indicadores-radar>div{background:#edf4ef;border:1px solid var(--line);padding:12px;border-radius:9px;overflow-wrap:anywhere}
-.indicadores-radar dt{font-size:.82rem;color:#49615a}
-.indicadores-radar dd{margin:2px 0 0;font-size:1.12rem;font-weight:650}
-.ficha-radar{display:grid;grid-template-columns:minmax(110px,1fr) minmax(0,3fr);gap:5px 12px;font-size:.91rem}
-.ficha-radar dt{font-weight:600}.ficha-radar dd{margin:0;overflow-wrap:anywhere}
-.bloque-radar{border-top:1px solid var(--line);margin-top:14px;padding-top:10px}
-.bloque-radar h3{font-size:1rem;margin:0 0 6px}
-.tabla-radar td{white-space:normal;min-width:92px}
-.tabla-radar td:first-child{min-width:110px}
-.tabla-radar caption{text-align:left;font-size:.84rem;color:#49615a;margin-bottom:6px}
-.tabla-radar th button{color:inherit;background:transparent;padding:0;min-height:28px;text-align:left}
-.tabla-radar th[aria-sort]{background:#d9e9df}
-.saldo-negativo{color:#a22f31;font-weight:650}.saldo-positivo{color:#176343;font-weight:650}
-summary{cursor:pointer;color:var(--accent)}
-[hidden]{display:none!important}
-@media(max-width:600px){main{padding:20px 12px}form,.results{padding:15px}header a{font-size:.8rem}}
+:root {
+  color-scheme: dark;
+  font: 16px/1.5 system-ui, sans-serif;
+  --page: #0b0b0d;
+  --surface: #121214;
+  --raised: #19191b;
+  --ink: #f2eee7;
+  --muted: #b8b1a6;
+  --gold: #d3ae6a;
+  --gold-line: #806540;
+  --line: #36312b;
+  --display: Georgia, "Times New Roman", serif;
+  background: var(--page);
+  color: var(--ink);
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; }
+main { max-width: 1280px; margin: auto; padding: 36px clamp(16px, 4vw, 52px) 64px; }
+h1, h2, p { margin: 0; }
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0 27px;
+  border-bottom: 1px solid var(--line);
+}
+h1, h2, .bloque-radar h3 { font-family: var(--display); font-weight: 400; }
+h1 { font-size: clamp(1.65rem, 4.4vw, 3rem); line-height: 1.1; letter-spacing: -.035em; }
+h1 em { color: var(--gold); font-weight: inherit; }
+h2 { font-size: clamp(1.6rem, 3.8vw, 2.45rem); line-height: 1.12; }
+a, summary { color: var(--gold); }
+a { text-underline-offset: .22em; }
+header a {
+  flex-shrink: 0;
+  border: 1px solid var(--gold-line);
+  padding: 9px 12px;
+  font-size: .75rem;
+  font-weight: 650;
+  letter-spacing: .08em;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+header a:hover { background: var(--raised); border-color: var(--gold); }
+
+nav { display: flex; flex-wrap: wrap; column-gap: 8px; row-gap: 5px; margin: 14px 0 20px; }
+nav button {
+  min-height: 42px;
+  padding: 7px 9px;
+  border: 1px solid transparent;
+  border-bottom-color: var(--line);
+  background: transparent;
+  color: var(--muted);
+  font-size: .82rem;
+  letter-spacing: .015em;
+  text-transform: none;
+}
+nav button:hover { color: var(--ink); background: var(--raised); }
+nav button[aria-selected=true] {
+  border-color: var(--gold-line);
+  background: #211b14;
+  color: var(--gold);
+}
+
+form, .results {
+  min-width: 0;
+  margin-bottom: 18px;
+  padding: clamp(16px, 3.4vw, 36px);
+  border: 1px solid var(--line);
+  border-top-color: var(--gold-line);
+  background: var(--surface);
+}
+.results > h2 + p { margin-top: 8px; color: var(--muted); }
+.results > form { margin-top: 18px; border: 1px solid var(--line); background: var(--page); }
+.filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 215px), 1fr));
+  gap: 18px 20px;
+  margin: 20px 0;
+}
+.filters:empty { display: none; }
+label { display: grid; align-content: start; gap: 6px; font-size: .88rem; font-weight: 650; }
+input, select, button { min-height: 43px; border-radius: 0; font: inherit; }
+input, select {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-bottom-color: var(--gold-line);
+  background: var(--page);
+  color: var(--ink);
+  padding: 8px 10px;
+  font-size: .91rem;
+}
+input[type=checkbox] { accent-color: var(--gold); }
+button {
+  border: 1px solid var(--gold-line);
+  background: transparent;
+  color: var(--gold);
+  padding: 8px 18px;
+  font-size: .79rem;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+button:hover:not(:disabled) { border-color: var(--gold); background: #211b14; }
+button:disabled { opacity: .65; cursor: wait; }
+:where(a, button, input, select, summary):focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+}
+.note, #status, small { color: var(--muted); font-size: .83rem; }
+.note { margin-top: 10px; }
+#status { margin: 8px 0 12px; }
+small { display: block; }
+label small { font-weight: 400; }
+fieldset { min-width: 0; margin: 12px 0; padding: 0 14px; border: 1px solid var(--line); }
+legend { padding: 0 6px; }
+legend label { display: flex; align-items: center; gap: 8px; }
+legend input[type=checkbox] { width: auto; min-height: auto; margin: 0; }
+
+.table { overflow: auto; }
+table { border-collapse: collapse; width: 100%; text-align: left; font-size: .88rem; }
+th, td { padding: 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { background: var(--raised); color: var(--gold); white-space: nowrap; }
+tbody tr:hover { background: var(--raised); }
+td:not(:first-child) { white-space: nowrap; }
+td:first-child { min-width: 185px; }
+pre { background: var(--page); padding: 14px; border: 1px solid var(--line); max-height: 60vh; overflow: auto; }
+.dashboard-radar { margin: 18px 0; }
+.indicadores-radar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 165px), 1fr));
+  gap: 10px;
+  margin: 12px 0;
+}
+.indicadores-radar > div { background: var(--page); border: 1px solid var(--line); border-top-color: var(--gold-line); padding: 12px; overflow-wrap: anywhere; }
+.indicadores-radar dt { color: var(--muted); font-size: .81rem; }
+.indicadores-radar dd { margin: 3px 0 0; font-size: 1.15rem; font-weight: 650; font-variant-numeric: tabular-nums; }
+.ficha-radar { display: grid; grid-template-columns: minmax(96px, 1fr) minmax(0, 3fr); gap: 5px 12px; font-size: .91rem; }
+.ficha-radar dt { font-weight: 600; overflow-wrap: anywhere; }
+.ficha-radar dd { margin: 0; overflow-wrap: anywhere; }
+.bloque-radar { border-top: 1px solid var(--line); margin-top: 16px; padding-top: 12px; }
+.bloque-radar h3 { color: var(--gold); font-size: 1.35rem; margin: 0 0 6px; }
+.tabla-radar td { white-space: normal; min-width: 92px; }
+.tabla-radar td:first-child { min-width: 110px; }
+.tabla-radar caption { text-align: left; font-size: .84rem; color: var(--muted); margin-bottom: 6px; }
+.tabla-radar th button { color: inherit; background: transparent; border: 0; padding: 0; min-height: 28px; text-align: left; letter-spacing: 0; text-transform: none; }
+.tabla-radar th[aria-sort] { background: #302419; }
+.saldo-negativo { color: #ffaaa2; font-weight: 650; }
+.saldo-positivo { color: var(--gold); font-weight: 650; }
+summary { cursor: pointer; }
+[hidden] { display: none !important; }
+@media (max-width: 550px) {
+  main { padding-top: 16px; }
+  header { padding-bottom: 18px; }
+  header a { font-size: .66rem; padding: 7px; }
+  .results > form { padding: 12px; }
+  nav { gap: 4px; }
+  nav button { font-size: .76rem; padding: 5px 6px; }
+}
 </style>
 </head>
 <body>
 <main>
-<header><h1>Radar de Subastas</h1><a href="/docs">Panel técnico</a></header>
+<header><h1>Radar de <em>Subastas</em></h1><a href="/docs">Panel técnico</a></header>
 <nav id="operations" role="tablist" aria-label="Operaciones de Radar de Subastas">
   <button type="button" id="tab-buscador" role="tab" aria-selected="true" aria-controls="buscador">Buscador rápido</button>
 </nav>
