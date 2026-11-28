@@ -66,15 +66,16 @@ header a:hover { background: var(--raised); border-color: var(--gold); }
 #consulta-activa { font-family: var(--display); font-size: 1.32rem; font-weight: 600; }
 #operations { background: var(--surface); border: 1px solid #292520; border-top: 0; padding: 7px 15px 10px; }
 #operations details + details { border-top: 1px solid var(--line); }
-#operations details > summary { padding: 9px 0; font-size: .91rem; font-weight: 650; }
+#operations details > summary { padding: 10px 0; font-size: .95rem; font-weight: 700; }
+#operations details > summary::marker { color: var(--gold); }
 #operations button {
   display: block;
-  width: 100%;
+  width: calc(100% - 20px);
   min-height: 40px;
   padding: 7px 12px;
   border: 0;
   border-left: 1px solid var(--line);
-  margin: 0 0 4px;
+  margin: 0 0 4px 20px;
   text-align: left;
   text-transform: none;
   color: var(--ink);
@@ -274,7 +275,7 @@ summary { cursor: pointer; }
 </div>
 <div id="operation-panel" role="region" hidden></div>
 </main>
-<script defer src="/panel.js"></script>
+<script defer src="/panel.js?v=__VERSION_PANEL__"></script>
 <script>
 const municipios = {madrid: ['28','Madrid'], barcelona: ['08','Barcelona'], bilbao: ['48','Bilbao'], sevilla: ['41','Sevilla']};
 const form = document.querySelector('#search');

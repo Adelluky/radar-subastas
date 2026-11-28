@@ -14,6 +14,7 @@ Puerto 8010.
 from __future__ import annotations
 
 import os
+from hashlib import sha256
 from html import escape
 from pathlib import Path
 from typing import Optional
@@ -78,12 +79,16 @@ def buscador_web():
         f'<option value="{provincia["codigo"]}">{escape(provincia["nombre"])}</option>'
         for provincia in provincias_disponibles()
     )
-    return pagina.replace("<!-- opciones-provincia -->", provincias)
+    version_panel = sha256(Path(__file__).with_name("panel.js").read_bytes()).hexdigest()[:16]
+    pagina = pagina.replace("<!-- opciones-provincia -->", provincias)
+    return HTMLResponse(pagina.replace("__VERSION_PANEL__", version_panel),
+                        headers={"Cache-Control": "no-cache"})
 
 
 @app.get("/panel.js", include_in_schema=False)
 def panel_script():
-    return FileResponse(Path(__file__).with_name("panel.js"), media_type="text/javascript")
+    return FileResponse(Path(__file__).with_name("panel.js"), media_type="text/javascript",
+                        headers={"Cache-Control": "no-cache"})
 
 
 @app.get("/health")
