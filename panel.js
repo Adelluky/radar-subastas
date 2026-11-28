@@ -277,7 +277,6 @@ function contenidoRadar(clave, valor) {
 function acordeonResultado(titulo, contenido) {
   const detalle = elemento('details');
   detalle.className = 'bloque-radar acordeon-radar';
-  detalle.open = true;
   const interior = elemento('div');
   interior.className = 'acordeon-contenido';
   interior.append(contenido);
@@ -513,7 +512,6 @@ function montarPanel(spec) {
         }
         resumenOriginal.textContent = tipo.includes('json') ? 'Ver JSON original' : 'Ver respuesta original';
         datosOriginales.hidden = false;
-        datosOriginales.open = !respuesta.ok;
         aviso.textContent = respuesta.ok ? 'Consulta completada.' : 'La API devolvió un error HTTP ' + respuesta.status + '.';
       } catch (error) {
         aviso.textContent = 'No se pudo completar la consulta. ' + error.message;

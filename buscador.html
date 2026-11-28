@@ -288,7 +288,7 @@ summary { cursor: pointer; }
 <section class="results">
   <h2>Resultados</h2>
   <p id="status" role="status">Selecciona los filtros y pulsa Buscar subastas.</p>
-  <details class="acordeon-radar" id="result-table" open hidden>
+  <details class="acordeon-radar" id="result-table" hidden>
     <summary>Fichas encontradas</summary>
     <div class="table acordeon-contenido">
     <table>
@@ -384,7 +384,7 @@ form.addEventListener('submit', async event => {
     }
     resultados.forEach(pintar);
     table.hidden = resultados.length === 0;
-    table.open = resultados.length > 0;
+    table.open = false;
     const resumen = resultados.length ? resultados.length + ' fichas coinciden con los filtros.' :
       (fallos.length === zonas.length ? 'La búsqueda no se pudo completar.' : 'La muestra consultada no contiene coincidencias.');
     statusText.textContent = resumen + (fallos.length ? ' Error de consulta en ' + fallos.join(', ') + '.' : '');
