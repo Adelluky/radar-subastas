@@ -78,7 +78,7 @@ const sugerencias = {
 };
 
 const inicialesPorOperacion = {
-  '/subastas/analizar': {vacancia_pct: 0},
+  '/subastas/analizar': {vacancia_pct: 0, reforma: 20000},
   '/subastas/oportunidades': {localidad: ''}
 };
 
