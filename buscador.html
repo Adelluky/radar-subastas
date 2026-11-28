@@ -4,8 +4,28 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Radar de Subastas</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&amp;family=Instrument+Sans:wght@400;500;600;700&amp;display=swap">
+<link rel="preload" href="/fuentes/cormorant-garamond.woff2" as="font" type="font/woff2" crossorigin>
 <style>
+@font-face {
+  font-family: "Cormorant Garamond";
+  src: url("/fuentes/cormorant-garamond.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 500 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Cormorant Garamond";
+  src: url("/fuentes/cormorant-garamond-italic.woff2") format("woff2");
+  font-style: italic;
+  font-weight: 500 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Instrument Sans";
+  src: url("/fuentes/instrument-sans.woff2") format("woff2");
+  font-weight: 400 700;
+  font-display: swap;
+}
 :root {
   color-scheme: light;
   font: 16px/1.5 "Instrument Sans", system-ui, sans-serif;
@@ -35,9 +55,15 @@ header {
   border-bottom: 1px solid #292520;
 }
 h1, h2, .bloque-radar > summary { font-family: var(--display); font-weight: 600; }
-h1 { font-size: clamp(2rem, 5vw, 3.65rem); line-height: 1.1; letter-spacing: -.035em; }
-h1 em { color: var(--gold); font-weight: inherit; }
-h2 { font-size: clamp(1.6rem, 3.8vw, 2.45rem); line-height: 1.12; }
+h1 {
+  font-size: clamp(1.75rem, 5.6vw, 4.15rem);
+  line-height: .98;
+  letter-spacing: .045em;
+  text-transform: uppercase;
+  color: #201c18;
+}
+h1 em { color: var(--gold); font-weight: 500; letter-spacing: .005em; text-transform: none; }
+h2 { font-size: clamp(1.85rem, 4vw, 2.8rem); line-height: 1.05; }
 a, summary { color: var(--gold); }
 a { text-underline-offset: .22em; }
 header a {
@@ -66,7 +92,7 @@ header a:hover { background: var(--raised); border-color: var(--gold); }
 #consulta-activa { font-family: var(--display); font-size: 1.32rem; font-weight: 600; }
 #operations { background: var(--surface); border: 1px solid #292520; border-top: 0; padding: 7px 15px 10px; }
 #operations details + details { border-top: 1px solid var(--line); }
-#operations details > summary { padding: 10px 0; font-size: .95rem; font-weight: 700; }
+#operations details > summary { padding: 9px 0; font-family: var(--display); font-size: 1.28rem; font-weight: 600; }
 #operations details > summary::marker { color: var(--gold); }
 #operations button {
   display: block;
@@ -162,7 +188,7 @@ pre { background: var(--page); padding: 14px; border: 1px solid var(--line); max
 .ficha-radar dt { font-weight: 600; overflow-wrap: anywhere; }
 .ficha-radar dd { margin: 0; overflow-wrap: anywhere; }
 .acordeon-radar { border: 1px solid var(--line); margin: 12px 0; }
-.acordeon-radar > summary { padding: 8px 12px; background: var(--raised); font-size: 1.35rem; }
+.acordeon-radar > summary { padding: 8px 12px; background: var(--raised); font-family: var(--display); font-size: 1.55rem; font-weight: 600; }
 .acordeon-radar[open] > summary { border-bottom: 1px solid var(--line); }
 .acordeon-contenido { padding: 10px 12px; }
 .acordeon-radar > pre { margin: 10px; }

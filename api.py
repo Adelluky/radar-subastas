@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Query
+from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, HTMLResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -40,6 +41,7 @@ app = FastAPI(
     description="Oportunidades inmobiliarias en subastas públicas, valoradas y con su riesgo.",
     version="1.0.0",
 )
+app.mount("/fuentes", StaticFiles(directory=Path(__file__).with_name("fuentes")), name="fuentes")
 app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]
 )
