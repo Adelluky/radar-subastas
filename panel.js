@@ -21,6 +21,14 @@ const operaciones = {
   '/subastas/calculadora': ['Calculadora de rentabilidad', 'Estima la cuota, el flujo de caja y la rentabilidad de un inmueble.']
 };
 
+const gruposConsultas = [
+  ['Buscar subastas', ['buscador','/subastas/buscar','/subastas/oportunidades']],
+  ['Analizar una inversión', ['/subastas/analizar','/subastas/calculadora','/subastas/inversor','/subastas/tipo-interes']],
+  ['Estudiar una zona', ['/subastas/zonas','/subastas/distritos','/subastas/zona','/subastas/alquiler','/subastas/entorno']],
+  ['Buscar municipios rentables', ['/subastas/se-pagan-solos','/subastas/se-pagan-solos.csv']],
+  ['Fuentes y comprobaciones', ['/subastas/provincias','/subastas/ciudades','/subastas/vigencia','/health','/subastas/health']]
+];
+
 const campos = {
   provincia: ['Provincia', 'Selecciona la provincia de la consulta. En financiación determina los impuestos aplicables.'],
   localidad: ['Localidad', 'Acota la búsqueda del BOE a un municipio dentro de la provincia.'],
@@ -87,6 +95,9 @@ const ciudades = [['madrid','Madrid'],['barcelona','Barcelona'],['valencia','Val
 const provinciasPanel = Array.from(document.querySelectorAll('#zona optgroup[label="Provincias"] option'),
   option => [option.value, option.textContent]);
 const menuPanel = document.querySelector('#operations');
+const selectorConsultas = document.querySelector('#selector-consultas');
+const botonConsultas = selectorConsultas.querySelector('summary');
+const consultaActiva = document.querySelector('#consulta-activa');
 const detallePanel = document.querySelector('#operation-panel');
 const buscadorPanel = document.querySelector('#buscador');
 
@@ -263,7 +274,18 @@ function contenidoRadar(clave, valor) {
   return lecturaRadar(clave, valor);
 }
 
-function bloqueRadar(datos, destacados = []) {
+function acordeonResultado(titulo, contenido) {
+  const detalle = elemento('details');
+  detalle.className = 'bloque-radar acordeon-radar';
+  detalle.open = true;
+  const interior = elemento('div');
+  interior.className = 'acordeon-contenido';
+  interior.append(contenido);
+  detalle.append(elemento('summary', titulo), interior);
+  return detalle;
+}
+
+function bloqueRadar(datos, destacados = [], plegarIndicadores = false) {
   const bloque = elemento('div');
   const lista = elemento('dl');
   lista.className = 'indicadores-radar';
@@ -277,7 +299,8 @@ function bloqueRadar(datos, destacados = []) {
     tarjeta.lastChild.append(contenidoRadar(clave,datos[clave]));
     lista.append(tarjeta);
   }
-  if (claves.length) bloque.append(lista);
+  const resumen = elemento('div');
+  if (claves.length) resumen.append(lista);
   const resto = entradas.filter(([c,v]) => !claves.includes(c) && (!escalar(v) || v != null));
   const escalares = resto.filter(([,v]) => escalar(v));
   if (escalares.length) {
@@ -288,13 +311,13 @@ function bloqueRadar(datos, destacados = []) {
       dd.append(lecturaRadar(clave,valor));
       ficha.append(elemento('dt',tituloRadar(clave)),dd);
     }
-    bloque.append(ficha);
+    resumen.append(ficha);
+  }
+  if (resumen.childElementCount) {
+    bloque.append(plegarIndicadores ? acordeonResultado('Indicadores de la consulta', resumen) : resumen);
   }
   for (const [clave, valor] of resto.filter(([,v]) => !escalar(v))) {
-    const seccion = elemento('section');
-    seccion.className = 'bloque-radar';
-    seccion.append(elemento('h3',tituloRadar(clave)),contenidoRadar(clave,valor));
-    bloque.append(seccion);
+    bloque.append(acordeonResultado(tituloRadar(clave), contenidoRadar(clave, valor)));
   }
   return bloque;
 }
@@ -443,6 +466,7 @@ function montarPanel(spec) {
     dashboard.className = 'dashboard-radar';
     dashboard.hidden = true;
     const datosOriginales = elemento('details');
+    datosOriginales.className = 'acordeon-radar';
     datosOriginales.hidden = true;
     const resumenOriginal = elemento('summary','Ver JSON original');
     const resultado = elemento('pre');
@@ -484,7 +508,7 @@ function montarPanel(spec) {
           descargar.hidden = false;
         }
         if (respuesta.ok && datos && typeof datos === 'object') {
-          dashboard.append(bloqueRadar(datos, resumenRadar[path]));
+          dashboard.append(bloqueRadar(datos, resumenRadar[path], true));
           dashboard.hidden = false;
         }
         resumenOriginal.textContent = tipo.includes('json') ? 'Ver JSON original' : 'Ver respuesta original';
@@ -501,18 +525,21 @@ function montarPanel(spec) {
     return cuerpo;
   }
 
-  const tabBuscador = menuPanel.querySelector('button');
+  const tabBuscador = document.querySelector('#tab-buscador');
+  const opciones = new Map([['buscador', tabBuscador]]);
   function seleccionar(tab, contenido) {
-    for (const item of menuPanel.querySelectorAll('[role="tab"]')) {
-      item.setAttribute('aria-selected', String(item === tab));
-      item.tabIndex = item === tab ? 0 : -1;
-    }
+    for (const item of opciones.values()) item.removeAttribute('aria-current');
+    tab.setAttribute('aria-current', 'true');
+    consultaActiva.textContent = tab.textContent;
     buscadorPanel.hidden = Boolean(contenido);
     detallePanel.hidden = !contenido;
     if (contenido) {
       detallePanel.setAttribute('aria-labelledby', tab.id);
       detallePanel.replaceChildren(contenido);
     }
+    for (const grupo of menuPanel.querySelectorAll('details')) grupo.open = grupo.contains(tab);
+    selectorConsultas.open = false;
+    botonConsultas.focus();
   }
   tabBuscador.addEventListener('click', () => seleccionar(tabBuscador, null));
 
@@ -523,26 +550,35 @@ function montarPanel(spec) {
       const tab = elemento('button', titulo);
       tab.type = 'button';
       tab.id = 'operacion-' + operation.operationId;
-      tab.tabIndex = -1;
-      tab.setAttribute('role', 'tab');
-      tab.setAttribute('aria-selected', 'false');
       tab.setAttribute('aria-controls', detallePanel.id);
       const contenido = crearOperacion(path, method, operation, titulo, ayuda);
       tab.addEventListener('click', () => seleccionar(tab, contenido));
-      menuPanel.append(tab);
+      const clave = opciones.has(path) ? method + ' ' + path : path;
+      opciones.set(clave, tab);
     }
   }
+  const agrupadas = new Set();
+  function crearGrupo(titulo, claves) {
+    const grupo = elemento('details');
+    grupo.append(elemento('summary', titulo));
+    for (const clave of claves) {
+      const tab = opciones.get(clave);
+      if (!tab) continue;
+      agrupadas.add(clave);
+      grupo.append(tab);
+      if (tab.hasAttribute('aria-current')) grupo.open = true;
+    }
+    if (grupo.childElementCount > 1) menuPanel.append(grupo);
+  }
+  for (const [titulo, claves] of gruposConsultas) crearGrupo(titulo, claves);
+  const otras = [...opciones.keys()].filter(clave => !agrupadas.has(clave));
+  if (otras.length) crearGrupo('Otras consultas', otras);
 
-  menuPanel.addEventListener('keydown', event => {
-    const tabs = Array.from(menuPanel.querySelectorAll('[role="tab"]'));
-    const actual = tabs.indexOf(event.target);
-    const destinos = {ArrowRight:(actual + 1) % tabs.length, ArrowLeft:(actual + tabs.length - 1) % tabs.length,
-      Home:0, End:tabs.length - 1};
-    if (actual < 0 || !(event.key in destinos)) return;
-    event.preventDefault();
-    const tab = tabs[destinos[event.key]];
-    tab.focus();
-    tab.click();
+  selectorConsultas.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && selectorConsultas.open) {
+      selectorConsultas.open = false;
+      botonConsultas.focus();
+    }
   });
 }
 

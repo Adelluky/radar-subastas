@@ -4,19 +4,20 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Radar de Subastas</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&amp;family=Instrument+Sans:wght@400;500;600;700&amp;display=swap">
 <style>
 :root {
-  color-scheme: dark;
-  font: 16px/1.5 system-ui, sans-serif;
-  --page: #0b0b0d;
-  --surface: #121214;
-  --raised: #19191b;
-  --ink: #f2eee7;
-  --muted: #b8b1a6;
-  --gold: #d3ae6a;
-  --gold-line: #806540;
-  --line: #36312b;
-  --display: Georgia, "Times New Roman", serif;
+  color-scheme: light;
+  font: 16px/1.5 "Instrument Sans", system-ui, sans-serif;
+  --page: #eee9e2;
+  --surface: #faf7f1;
+  --raised: #e5ddd2;
+  --ink: #27231f;
+  --muted: #625950;
+  --gold: #5a4737;
+  --gold-line: #8d7a67;
+  --line: #cabfb0;
+  --display: "Cormorant Garamond", Georgia, "Times New Roman", serif;
   background: var(--page);
   color: var(--ink);
 }
@@ -31,10 +32,10 @@ header {
   justify-content: space-between;
   gap: 16px;
   padding: 12px 0 27px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid #292520;
 }
-h1, h2, .bloque-radar h3 { font-family: var(--display); font-weight: 400; }
-h1 { font-size: clamp(1.65rem, 4.4vw, 3rem); line-height: 1.1; letter-spacing: -.035em; }
+h1, h2, .bloque-radar > summary { font-family: var(--display); font-weight: 600; }
+h1 { font-size: clamp(2rem, 5vw, 3.65rem); line-height: 1.1; letter-spacing: -.035em; }
 h1 em { color: var(--gold); font-weight: inherit; }
 h2 { font-size: clamp(1.6rem, 3.8vw, 2.45rem); line-height: 1.12; }
 a, summary { color: var(--gold); }
@@ -51,24 +52,36 @@ header a {
 }
 header a:hover { background: var(--raised); border-color: var(--gold); }
 
-nav { display: flex; flex-wrap: wrap; column-gap: 8px; row-gap: 5px; margin: 14px 0 20px; }
-nav button {
-  min-height: 42px;
-  padding: 7px 9px;
-  border: 1px solid transparent;
-  border-bottom-color: var(--line);
-  background: transparent;
-  color: var(--muted);
-  font-size: .82rem;
-  letter-spacing: .015em;
+#selector-consultas { margin: 14px 0 20px; }
+#selector-consultas > summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 13px;
+  background: #292521;
+  color: #faf7f1;
+  padding: 11px 15px;
+}
+#selector-consultas > summary span:first-child { font-size: .76rem; letter-spacing: .12em; text-transform: uppercase; }
+#consulta-activa { font-family: var(--display); font-size: 1.32rem; font-weight: 600; }
+#operations { background: var(--surface); border: 1px solid #292520; border-top: 0; padding: 7px 15px 10px; }
+#operations details + details { border-top: 1px solid var(--line); }
+#operations details > summary { padding: 9px 0; font-size: .91rem; font-weight: 650; }
+#operations button {
+  display: block;
+  width: 100%;
+  min-height: 40px;
+  padding: 7px 12px;
+  border: 0;
+  border-left: 1px solid var(--line);
+  margin: 0 0 4px;
+  text-align: left;
   text-transform: none;
+  color: var(--ink);
+  letter-spacing: 0;
+  font-size: .89rem;
 }
-nav button:hover { color: var(--ink); background: var(--raised); }
-nav button[aria-selected=true] {
-  border-color: var(--gold-line);
-  background: #211b14;
-  color: var(--gold);
-}
+#operations button[aria-current] { background: var(--raised); border-left: 2px solid #292520; }
 
 form, .results {
   min-width: 0;
@@ -110,7 +123,7 @@ button {
   text-transform: uppercase;
   cursor: pointer;
 }
-button:hover:not(:disabled) { border-color: var(--gold); background: #211b14; }
+button:hover:not(:disabled) { border-color: var(--gold); background: #e4dacf; }
 button:disabled { opacity: .65; cursor: wait; }
 :where(a, button, input, select, summary):focus-visible {
   outline: 2px solid var(--gold);
@@ -147,14 +160,21 @@ pre { background: var(--page); padding: 14px; border: 1px solid var(--line); max
 .ficha-radar { display: grid; grid-template-columns: minmax(96px, 1fr) minmax(0, 3fr); gap: 5px 12px; font-size: .91rem; }
 .ficha-radar dt { font-weight: 600; overflow-wrap: anywhere; }
 .ficha-radar dd { margin: 0; overflow-wrap: anywhere; }
-.bloque-radar { border-top: 1px solid var(--line); margin-top: 16px; padding-top: 12px; }
-.bloque-radar h3 { color: var(--gold); font-size: 1.35rem; margin: 0 0 6px; }
+.acordeon-radar { border: 1px solid var(--line); margin: 12px 0; }
+.acordeon-radar > summary { padding: 8px 12px; background: var(--raised); font-size: 1.35rem; }
+.acordeon-radar[open] > summary { border-bottom: 1px solid var(--line); }
+.acordeon-contenido { padding: 10px 12px; }
+.acordeon-radar > pre { margin: 10px; }
+.acordeon-radar > summary, #selector-consultas > summary { list-style: none; }
+.acordeon-radar > summary::-webkit-details-marker, #selector-consultas > summary::-webkit-details-marker { display: none; }
+.acordeon-radar > summary::after, #selector-consultas > summary::after { content: "+"; float: right; margin-left: auto; font-family: "Instrument Sans", system-ui, sans-serif; }
+.acordeon-radar[open] > summary::after, #selector-consultas[open] > summary::after { content: "−"; }
 .tabla-radar td { white-space: normal; min-width: 92px; }
 .tabla-radar td:first-child { min-width: 110px; }
 .tabla-radar caption { text-align: left; font-size: .84rem; color: var(--muted); margin-bottom: 6px; }
 .tabla-radar th button { color: inherit; background: transparent; border: 0; padding: 0; min-height: 28px; text-align: left; letter-spacing: 0; text-transform: none; }
-.tabla-radar th[aria-sort] { background: #302419; }
-.saldo-negativo { color: #ffaaa2; font-weight: 650; }
+.tabla-radar th[aria-sort] { background: #d8cabc; }
+.saldo-negativo { color: #973d32; font-weight: 650; }
 .saldo-positivo { color: var(--gold); font-weight: 650; }
 summary { cursor: pointer; }
 [hidden] { display: none !important; }
@@ -163,19 +183,21 @@ summary { cursor: pointer; }
   header { padding-bottom: 18px; }
   header a { font-size: .66rem; padding: 7px; }
   .results > form { padding: 12px; }
-  nav { gap: 4px; }
-  nav button { font-size: .76rem; padding: 5px 6px; }
+  #operations { padding-inline: 10px; }
 }
 </style>
 </head>
 <body>
 <main>
 <header><h1>Radar de <em>Subastas</em></h1><a href="/docs">Panel técnico</a></header>
-<nav id="operations" role="tablist" aria-label="Operaciones de Radar de Subastas">
-  <button type="button" id="tab-buscador" role="tab" aria-selected="true" aria-controls="buscador">Buscador rápido</button>
-</nav>
+<details id="selector-consultas">
+  <summary><span>Consultas</span><span id="consulta-activa">Buscador rápido</span></summary>
+  <nav id="operations" aria-label="Consultas disponibles">
+    <button type="button" id="tab-buscador" aria-current="true" aria-controls="buscador">Buscador rápido</button>
+  </nav>
+</details>
 <p id="panel-status" role="status" class="note"></p>
-<div id="buscador" role="tabpanel" aria-labelledby="tab-buscador">
+<div id="buscador" role="region" aria-labelledby="tab-buscador">
 <form id="search">
   <h2>Buscar inmuebles del BOE</h2>
   <div class="filters">
@@ -239,15 +261,18 @@ summary { cursor: pointer; }
 <section class="results">
   <h2>Resultados</h2>
   <p id="status" role="status">Selecciona los filtros y pulsa Buscar subastas.</p>
-  <div class="table" id="result-table" hidden>
+  <details class="acordeon-radar" id="result-table" open hidden>
+    <summary>Fichas encontradas</summary>
+    <div class="table acordeon-contenido">
     <table>
       <thead><tr><th>Localidad y ficha</th><th>Valor de subasta</th><th>Tasación</th><th>Depósito</th><th>Fecha de cierre</th><th>Visitable</th><th>Riesgo</th></tr></thead>
       <tbody id="rows"></tbody>
     </table>
-  </div>
+    </div>
+  </details>
 </section>
 </div>
-<div id="operation-panel" role="tabpanel" hidden></div>
+<div id="operation-panel" role="region" hidden></div>
 </main>
 <script defer src="/panel.js"></script>
 <script>
@@ -332,6 +357,7 @@ form.addEventListener('submit', async event => {
     }
     resultados.forEach(pintar);
     table.hidden = resultados.length === 0;
+    table.open = resultados.length > 0;
     const resumen = resultados.length ? resultados.length + ' fichas coinciden con los filtros.' :
       (fallos.length === zonas.length ? 'La búsqueda no se pudo completar.' : 'La muestra consultada no contiene coincidencias.');
     statusText.textContent = resumen + (fallos.length ? ' Error de consulta en ' + fallos.join(', ') + '.' : '');
