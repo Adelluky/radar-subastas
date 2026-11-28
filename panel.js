@@ -77,6 +77,11 @@ const sugerencias = {
   anios_hipoteca:[15,20,25,30,35]
 };
 
+const inicialesPorOperacion = {
+  '/subastas/analizar': {vacancia_pct: 0},
+  '/subastas/oportunidades': {localidad: ''}
+};
+
 const porcentajes = ['entrada_pct','interes_anual','diferencial','vacancia_pct','irpf_marginal'];
 const ciudades = [['madrid','Madrid'],['barcelona','Barcelona'],['valencia','Valencia'],['sevilla','Sevilla'],['malaga','Málaga']];
 const provinciasPanel = Array.from(document.querySelectorAll('#zona optgroup[label="Provincias"] option'),
@@ -333,13 +338,13 @@ function montarPanel(spec) {
 
   let numeroLista = 0;
 
-  function campo(nombre, schema, requerido, padre) {
+  function campo(nombre, schema, requerido, padre, iniciales) {
     const [titulo, ayuda] = campos[nombre] || [nombre, schema.description || 'Valor que se envía a la API.'];
     const etiqueta = elemento('label', titulo + (requerido ? ' *' : ''));
     const escala = porcentajes.includes(nombre) ? 100 : 1;
     const mostrar = valor => typeof valor === 'number' ? Number((valor * escala).toPrecision(12)) :
       typeof valor === 'boolean' ? (valor ? 'Sí' : 'No') : valor;
-    const inicial = ejemplos[nombre] ?? schema.default;
+    const inicial = iniciales[nombre] ?? ejemplos[nombre] ?? schema.default;
     const opciones = nombre === 'provincia' ? provinciasPanel : nombre === 'ciudad' ? ciudades :
       schema.type === 'boolean' ? [['true','Sí'],['false','No']] :
       schema.enum?.map(value => [String(value), String(value)]);
@@ -391,13 +396,13 @@ function montarPanel(spec) {
     };
   }
 
-  function formulario(propiedades, requeridos, padre) {
+  function formulario(propiedades, requeridos, padre, iniciales) {
     const rejilla = elemento('div');
     rejilla.className = 'filters';
     padre.append(rejilla);
     const lectores = Object.entries(propiedades).map(([nombre, raw]) => {
       const schema = resolver(raw);
-      if (!schema.properties) return [nombre, campo(nombre, schema, requeridos.includes(nombre), rejilla)];
+      if (!schema.properties) return [nombre, campo(nombre, schema, requeridos.includes(nombre), rejilla, iniciales)];
       const grupo = elemento('fieldset');
       const leyenda = elemento('legend');
       const activar = elemento('input');
@@ -407,7 +412,7 @@ function montarPanel(spec) {
       titulo.prepend(activar);
       leyenda.append(titulo);
       grupo.append(leyenda, elemento('small', campos[nombre][1]));
-      const leer = formulario(schema.properties, schema.required || [], grupo);
+      const leer = formulario(schema.properties, schema.required || [], grupo, iniciales);
       activar.addEventListener('change', () => { grupo.disabled = !activar.checked; });
       padre.append(grupo);
       return [nombre, () => activar.checked ? leer() : undefined];
@@ -421,12 +426,13 @@ function montarPanel(spec) {
     cuerpo.className = 'results';
     cuerpo.append(elemento('h2', titulo), elemento('p', ayuda), elemento('small', method.toUpperCase() + ' ' + path));
     const form = elemento('form');
+    const iniciales = inicialesPorOperacion[path] || {};
     const params = (operacion.parameters || []).filter(param => param.in === 'query');
     const leerQuery = formulario(Object.fromEntries(params.map(param => [param.name, param.schema])),
-      params.filter(param => param.required).map(param => param.name), form);
+      params.filter(param => param.required).map(param => param.name), form, iniciales);
     const esquema = operacion.requestBody?.content['application/json']?.schema;
     const modelo = esquema ? resolver(esquema) : null;
-    const leerCuerpo = modelo ? formulario(modelo.properties, modelo.required || [], form) : null;
+    const leerCuerpo = modelo ? formulario(modelo.properties, modelo.required || [], form, iniciales) : null;
     const ejecutar = elemento('button', 'Ejecutar consulta');
     ejecutar.type = 'submit';
     form.append(ejecutar);
